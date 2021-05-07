@@ -5,11 +5,22 @@ use serenity::{client::Context, model::channel::Reaction};
 use crate::{
     database::{Database, ServerConfiguration},
     error_handling::handle_err_dms,
-    services, view,
+    services,
+    state::State,
 };
 
 pub async fn reaction_add(ctx: &Context, reaction: &Reaction) {
     let data = ctx.data.read().await;
+    let state = data.get::<State>().unwrap();
+
+    // SAFETY: guaranteed to never be None, as per serenity developers
+    // TODO: be paranoid anyways
+    let user_id = reaction.user_id.unwrap();
+
+    if !state.get_user(&user_id).await.can_make_report() {
+        return;
+    }
+
     let db = data.get::<Database>().unwrap();
 
     if is_report_emoji(&reaction, &db).await {

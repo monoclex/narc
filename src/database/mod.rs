@@ -39,6 +39,7 @@ impl Database {
         guild_id: GuildId,
         report_emoji: ReactionType,
         reports_channel: ChannelId,
+        prefix: Option<&str>,
     ) -> Result<(), sqlx::Error> {
         let guild_id = guild_id.0 as i64;
 
@@ -49,8 +50,6 @@ impl Database {
             ReactionType::Unicode(str) => (Some(str), None),
             _ => panic!("unsupported emoji type"),
         };
-
-        let prefix = Option::<String>::None;
 
         let mut transaction = self.connection.begin().await?;
         sqlx::query!(

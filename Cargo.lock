@@ -717,6 +717,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lazy-regex"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d4358d81ee87faee9eab26098e3efde0a72ed8db1c7d40fa3ec1d9f68fcf283"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -853,6 +862,8 @@ dependencies = [
  "dotenv",
  "env_logger",
  "human-panic",
+ "lazy-regex",
+ "lazy_static",
  "log",
  "num_cpus",
  "regex",
@@ -1107,9 +1118,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.5.3"
+version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce5f1ceb7f74abbce32601642fcf8e8508a8a8991e0621c7d750295b9095702b"
+checksum = "d07a8629359eb56f1e2fb1652bb04212c072a87ba68546a04065d525673ac461"
 dependencies = [
  "aho-corasick",
  "memchr",

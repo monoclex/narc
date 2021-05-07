@@ -6,6 +6,7 @@ mod error_handling;
 mod listeners;
 mod parsing;
 mod services;
+mod state;
 mod view;
 
 use anyhow::Result;
@@ -15,6 +16,7 @@ use database::Database;
 use serenity::client::Client;
 use serenity::framework::StandardFramework;
 use serenity::http::Http;
+use state::State;
 use std::collections::HashSet;
 use tracing_subscriber::filter::LevelFilter;
 
@@ -49,7 +51,8 @@ async fn main() -> Result<()> {
                 .case_insensitivity(true)
         })
         .after(after)
-        .group(&ASSISTANCE_GROUP);
+        .group(&ASSISTANCE_GROUP)
+        .group(&ADMINISTRATION_GROUP);
 
     let mut client = Client::builder(token)
         .event_handler(listeners::Listener)
@@ -59,6 +62,7 @@ async fn main() -> Result<()> {
     {
         let mut data = client.data.write().await;
         data.insert::<Database>(database);
+        data.insert::<State>(State::new());
     }
 
     client.start().await?;

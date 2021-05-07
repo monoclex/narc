@@ -5,13 +5,22 @@ use serenity::{
     utils::content_safe,
 };
 
-use assistance::*;
 mod assistance;
+use assistance::*;
+
+mod administration;
+use administration::*;
 
 #[group("Assistance")]
 #[description = "Commands that serve to aid users in getting assistance"]
 #[commands(report)]
 pub struct Assistance;
+
+#[group("Administration")]
+#[description = "Commands that are for administrator use only"]
+#[commands(setup)]
+#[owners_only]
+pub struct Administration;
 
 #[hook]
 pub async fn after(ctx: &Context, msg: &Message, cmd: &str, err: CommandResult) {

@@ -1,5 +1,5 @@
 use crate::{database::Database, error_handling::*};
-use serenity::{client::Context, model::channel::Message};
+use serenity::{client::Context, model::channel::*};
 use serenity::{
     framework::standard::{macros::*, CommandResult},
     utils::content_safe,
@@ -16,7 +16,16 @@ pub struct Assistance;
 #[hook]
 pub async fn after(ctx: &Context, msg: &Message, cmd: &str, err: CommandResult) {
     let error = match err {
-        Ok(_) => return,
+        Ok(_) => {
+            let reaction = msg
+                .react(&ctx, ReactionType::Unicode("✅".to_owned()))
+                .await;
+
+            if let Err(err) = reaction {
+                log::error!("error reaction with :white_check_mark: to user: {:?}", err);
+            }
+            return;
+        }
         Err(err) => err,
     };
 

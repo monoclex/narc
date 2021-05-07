@@ -9,6 +9,7 @@ mod services;
 mod view;
 
 use anyhow::Result;
+use commands::after;
 use commands::*;
 use database::Database;
 use serenity::client::Client;
@@ -47,6 +48,7 @@ async fn main() -> Result<()> {
                 .owners(administrators)
                 .case_insensitivity(true)
         })
+        .after(after)
         .group(&ASSISTANCE_GROUP);
 
     let mut client = Client::builder(token)

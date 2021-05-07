@@ -22,9 +22,9 @@ pub enum SetupCommandError {
     NoGuild,
     #[error("Timed out")]
     Timeout,
-    #[error("An SQL error occurred")]
+    #[error("An SQL error occurred: {0}")]
     SqlError(#[from] sqlx::Error),
-    #[error("A Discord error occurred")]
+    #[error("A Discord error occurred: {0}")]
     DiscordError(#[from] serenity::Error),
     #[error("No reports channel was specified")]
     NoReportsChannelSpecified,
@@ -32,7 +32,7 @@ pub enum SetupCommandError {
     InvalidReportsChannelSpecified(serenity::Error),
     #[error("Too many channels specified (only one allowed)")]
     TooManyReportsChannelSpecified,
-    #[error("Invalid confirmation")]
+    #[error("Invalid confirmation: {0}")]
     InvalidConfirmation(serenity_utils::Error),
     #[error("Configuration rejected")]
     RejectedConfiguration,

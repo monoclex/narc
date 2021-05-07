@@ -6,10 +6,12 @@ use thiserror::Error;
 pub enum MakeReportError {
     #[error("Cannot submit report for unconfigured server")]
     UnconfiguredServer,
-    #[error("An SQL error occured")]
+    #[error("An SQL error occured: {0}")]
     SqlError(#[from] sqlx::Error),
-    #[error("A Discord error occured")]
+    #[error("A Discord error occured: {0}")]
     DiscordError(#[from] serenity::Error),
+    #[error("An error occured while updating the view: {0}")]
+    ViewError(#[from] view::UpdateViewError),
 }
 
 pub async fn make_report(
@@ -47,7 +49,7 @@ pub async fn make_report(
             report_reason,
         )
         .await?;
-    view::update_report_view(ctx, &db, effect).await;
+    view::update_report_view(ctx, &db, effect).await?;
 
     Ok(())
 }

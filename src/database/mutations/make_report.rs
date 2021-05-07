@@ -30,10 +30,11 @@ impl Database {
             .execute(&mut connection)
             .await?;
 
-        let _archived_message_id = self
-            .archive_message_in_transaction(&mut connection, &reported_message.unwrap())
-            .await?
-            .message_id();
+        if let Some(message) = reported_message {
+            self.archive_message_in_transaction(&mut connection, message)
+                .await?
+                .message_id();
+        }
 
         let effect = self
             .create_report(

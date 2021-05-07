@@ -15,8 +15,6 @@ impl TypeMapKey for State {
     type Value = State;
 }
 
-struct StateLock<'e, L, E>(RwLockWriteGuard<'e, L>, &'e mut E);
-
 impl State {
     pub fn new() -> Self {
         Self {

@@ -102,7 +102,6 @@ impl Database {
         //     }
         // }
 
-        let orig_gid = guild_id.clone();
         let guild_id = guild_id.0 as i64;
 
         let find_prefix = sqlx::query!(

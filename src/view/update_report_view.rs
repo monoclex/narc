@@ -1,87 +1,81 @@
 use serenity::{
     builder::CreateEmbed,
     client::Context,
-    model::{id::*, prelude::User},
+    model::{channel::ReactionType, id::*, prelude::User},
     prelude::Mentionable,
 };
 
 use crate::database::{models::*, Database, MakeReportEffect};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum UpdateViewError {
+    #[error("Report does not exist in database.")]
+    ReportDoesntExist,
+    #[error("An SQL error occurred: {0}")]
+    SqlError(#[from] sqlx::Error),
+    #[error("A Discord error occurred: {0}")]
+    DiscordError(#[from] serenity::Error),
+    #[error("This server has not been configured yet")]
+    UnconfiguredServer,
+}
 
 // TODO: simplify verbose error handling by propagating it up
-pub async fn update_report_view(ctx: &Context, db: &Database, effect: MakeReportEffect) {
+pub async fn update_report_view(
+    ctx: &Context,
+    db: &Database,
+    effect: MakeReportEffect,
+) -> Result<(), UpdateViewError> {
     let report_id = match effect {
         MakeReportEffect::Created(id) => id,
         MakeReportEffect::Updated(id) => id,
-        MakeReportEffect::Duplicate(_) => return,
+        MakeReportEffect::Duplicate(_) => return Ok(()),
     };
 
-    let report = match db.load_report(report_id).await {
-        Ok(Some(r)) => r,
-        Ok(None) => {
-            log::error!("unable to load report {} (wtf?)", report_id);
-            return;
-        }
-        Err(error) => {
-            log::error!("unable to load report {}: {}", report_id, error);
-            return;
-        }
-    };
+    let report = db
+        .load_report(report_id)
+        .await?
+        .ok_or(UpdateViewError::ReportDoesntExist)?;
 
-    tokio::join!(
-        update_user_view(&ctx, &db, &report),
-        update_mod_view(&ctx, &db, &report),
-    );
+    update_mod_view(&ctx, &db, &report).await?;
+    update_user_view(&ctx, &db, &report).await?;
+
+    Ok(())
 }
 
-async fn update_user_view(ctx: &Context, db: &Database, report: &ReportModel) {
-    let view = match db.load_user_view(report.id).await {
-        Ok(v) => v,
-        Err(error) => {
-            log::error!("unable to load user view model {}: {}", report.id, error);
-            return;
-        }
-    };
+async fn update_user_view(
+    ctx: &Context,
+    db: &Database,
+    report: &ReportModel,
+) -> Result<(), UpdateViewError> {
+    let view = db.load_user_view(report.id).await?;
+    let dms = report.accuser_user_id.create_dm_channel(&ctx).await?;
 
-    let dms = match report.accuser_user_id.create_dm_channel(&ctx).await {
-        Ok(x) => x,
-        Err(error) => {
-            log::error!(
-                "unable to start dms for {}: {}",
-                report.accuser_user_id,
-                error
-            );
-            return;
-        }
+    let channel_name = match report.channel_id {
+        Some(c) => c.name(&ctx).await,
+        None => None,
     };
 
     let msg = match view {
         Some(view) => {
-            match dms
-                .edit_message(&ctx, view.message_id, |m| {
-                    m.embed(|e| display_user_view(&report, e))
-                })
-                .await
-            {
-                Ok(m) => m,
-                Err(e) => {
-                    log::error!("error sending message in dms for {:?}: {}", report, e);
-                    return;
-                }
-            }
+            dms.edit_message(&ctx, view.message_id, |m| {
+                m.embed(|e| display_user_view(&report, e, channel_name))
+            })
+            .await?
         }
         None => {
-            match dms
-                .send_message(&ctx, |m| m.embed(|e| display_user_view(&report, e)))
-                .await
-            {
-                Ok(x) => x,
-                Err(e) => {
-                    log::error!("error sending message in dms for {:?}: {}", report, e);
-                    return;
-                }
-            }
+            dms.send_message(&ctx, |m| {
+                m.embed(|e| display_user_view(&report, e, channel_name))
+            })
+            .await?
         }
     };
+
+    msg.react(&ctx, ReactionType::Unicode("🔄".to_owned()))
+        .await?;
+
+    msg.react(&ctx, ReactionType::Unicode("📝".to_owned()))
+        .await?;
 
     let updated_model = UserViewModel {
         report_id: report.id,
@@ -89,105 +83,91 @@ async fn update_user_view(ctx: &Context, db: &Database, report: &ReportModel) {
         status: report.status,
     };
 
-    match db.save_user_view(updated_model).await {
-        Ok(_) => {}
-        Err(error) => {
-            log::error!("error saving user view {:?} {:?}: {}", report, msg, error);
-            return;
-        }
+    db.save_user_view(updated_model).await?;
+
+    Ok(())
+}
+
+fn display_user_view<'a, 'b>(
+    report: &ReportModel,
+    e: &'a mut CreateEmbed,
+    channel_name: Option<String>,
+) -> &'a mut CreateEmbed {
+    e.title(format!("Report (ID #{})", report.id));
+
+    e.field("Reported User", report.reported_user_id.mention(), true)
+        .field("Status", format!("{:?}", report.status), true);
+
+    if let Some(url) = report.url() {
+        e.field(
+            "Location",
+            format!(
+                "[#{}]({})",
+                channel_name.unwrap_or("error fetching channel name".to_owned()),
+                url
+            ),
+            true,
+        );
     }
+
+    e.field(
+        "Provided Reason",
+        report
+            .reason
+            .as_deref()
+            .unwrap_or("No reason provided! React with 📝 to provide one."),
+        false,
+    )
 }
 
-fn display_user_view<'a, 'b>(report: &ReportModel, e: &'a mut CreateEmbed) -> &'a mut CreateEmbed {
-    e.title(format!("Report (ID #{})", report.id))
-        .field(
-            "Provided Reason",
-            report.reason.as_deref().unwrap_or("No reason provided!"),
-            false,
-        )
-        .field("Location", "TOOD: implement this", false)
-        .field("Status", format!("{:?}", report.status), false)
-}
+async fn update_mod_view(
+    ctx: &Context,
+    db: &Database,
+    report: &ReportModel,
+) -> Result<(), UpdateViewError> {
+    let view = db.load_mod_view(report.id).await?;
+    let maybe_config = db.maybe_load_server_config(report.guild_id).await?;
+    let config = maybe_config.ok_or(UpdateViewError::UnconfiguredServer)?;
 
-async fn update_mod_view(ctx: &Context, db: &Database, report: &ReportModel) {
-    let view = match db.load_mod_view(report.id).await {
-        Ok(v) => v,
-        Err(error) => {
-            log::error!("unable to load user view model {}: {}", report.id, error);
-            return;
-        }
-    };
-
-    let maybe_config = match db.maybe_load_server_config(report.guild_id).await {
-        Ok(x) => x,
-        Err(error) => {
-            log::error!(
-                "unable to load server config {}: {}",
-                report.guild_id,
-                error
-            );
-            return;
-        }
-    };
-
-    // TODO: inform guild administrator? prevent report from being sent in?
-    let config = match maybe_config {
-        Some(x) => x,
-        None => {
-            log::error!("no server config found for {}", report.guild_id);
-            return;
-        }
-    };
-
-    // TODO: handle moving reports and whatnot?
+    // TODO: handle a changed reports channel and whatnot?
     let channel_id = ChannelId(config.reports_channel);
-
-    let reporter = match report.accuser_user_id.to_user(&ctx).await {
-        Ok(x) => x,
-        Err(e) => {
-            log::error!("unable to fetch user {}: {}", report.accuser_user_id, e);
-            return;
-        }
+    let channel_name = match report.channel_id {
+        Some(c) => c.name(&ctx).await,
+        None => None,
     };
 
-    let reported = match report.reported_user_id.to_user(&ctx).await {
-        Ok(x) => x,
-        Err(e) => {
-            log::error!("unable to fetch user {}: {}", report.reported_user_id, e);
-            return;
-        }
-    };
+    let reporter = report.accuser_user_id.to_user(&ctx).await?;
+    let reported = report.reported_user_id.to_user(&ctx).await?;
 
+    // TODO: handle if the report message got deleted
     let msg = match view {
         Some(view) => {
-            match channel_id
+            channel_id
                 .edit_message(&ctx, view.message_id, |m| {
-                    m.embed(|e| display_mod_view(&report, e, reported, reporter))
+                    m.embed(|e| display_mod_view(&report, e, channel_name, reported, reporter))
                 })
-                .await
-            {
-                Ok(m) => m,
-                Err(e) => {
-                    log::error!("error sending message in dms for {:?}: {}", report, e);
-                    return;
-                }
-            }
+                .await?
         }
         None => {
-            match channel_id
+            channel_id
                 .send_message(&ctx, |m| {
-                    m.embed(|e| display_mod_view(&report, e, reported, reporter))
+                    m.embed(|e| display_mod_view(&report, e, channel_name, reported, reporter))
                 })
-                .await
-            {
-                Ok(x) => x,
-                Err(e) => {
-                    log::error!("error sending message in dms for {:?}: {}", report, e);
-                    return;
-                }
-            }
+                .await?
         }
     };
+
+    msg.react(&ctx, ReactionType::Unicode("🔄".to_owned()))
+        .await?;
+
+    msg.react(&ctx, ReactionType::Unicode("🛄".to_owned()))
+        .await?;
+
+    msg.react(&ctx, ReactionType::Unicode("❌".to_owned()))
+        .await?;
+
+    msg.react(&ctx, ReactionType::Unicode("✅".to_owned()))
+        .await?;
 
     let updated_model = ModViewModel {
         report_id: report.id,
@@ -199,60 +179,49 @@ async fn update_mod_view(ctx: &Context, db: &Database, report: &ReportModel) {
         handler: None,
     };
 
-    match db.save_mod_view(updated_model).await {
-        Ok(_) => {}
-        Err(error) => {
-            log::error!("error saving user view {:?} {:?}: {}", report, msg, error);
-            return;
-        }
-    }
+    db.save_mod_view(updated_model).await?;
+
+    Ok(())
 }
 
 fn display_mod_view<'a, 'b>(
     report: &ReportModel,
     e: &'a mut CreateEmbed,
+    channel_name: Option<String>,
     reported: User,
     reporter: User,
 ) -> &'a mut CreateEmbed {
-    // TODO: gotta be a better way yuck
-    let reported_message_url = report.message_id.and_then(|m| {
-        report.channel_id.map(|c| {
-            format!(
-                "https://discord.com/channels/{}/{}/{}",
-                report.guild_id, c, m
-            )
-        })
-    });
-
     let reporter_user = reporter;
     let reported_user = reported;
 
-    let reported_user_avatar_url = reported_user
+    let avatar_url = reporter_user
         .avatar_url()
-        .unwrap_or_else(|| reported_user.default_avatar_url());
+        .unwrap_or_else(|| reporter_user.default_avatar_url());
     let reported_user_mention = reported_user.mention();
     let reporter_user_mention = reporter_user.mention();
-    // TODO: get channel name
-    let location_channel_name = "#TODO".to_owned();
 
-    let mut preview = String::new();
-    if preview.trim().len() == 0 {
-        preview.push_str("No preview available");
-    }
+    let preview = Option::<String>::None;
 
     e.author(|a| {
-        a.icon_url(reported_user_avatar_url)
-            .name(reported_user.name)
+        a.icon_url(avatar_url)
+            .name(format!("Report (ID #{})", report.id))
     })
-    .field("Reported User", reported_user_mention, true)
-    .field("Status", "Unclaimed", true)
-    .field("Reported By", reporter_user_mention, false)
-    .field("Preview", preview, false);
+    .field("Accused User", reported_user_mention, true)
+    .field("Reported By", reporter_user_mention, true)
+    .field("Status", "Unclaimed", true);
 
-    if let Some(location_link) = reported_message_url {
+    if let Some(preview) = preview {
+        e.field("Preview", preview, false);
+    }
+
+    if let Some(location_link) = report.url() {
         e.field(
             "Location",
-            format!("[{}]({})", location_channel_name, location_link),
+            format!(
+                "[#{}]({})",
+                channel_name.unwrap_or("error fetching channel name".to_owned()),
+                location_link
+            ),
             true,
         );
     }

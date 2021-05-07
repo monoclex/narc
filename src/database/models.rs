@@ -36,6 +36,15 @@ pub enum ReportStatus {
     Denied,
 }
 
+impl ReportModel {
+    pub fn url(&self) -> Option<String> {
+        self.message_id.and_then(|m| {
+            self.channel_id
+                .map(|c| format!("https://discord.com/channels/{}/{}/{}", self.guild_id, c, m))
+        })
+    }
+}
+
 impl From<i64> for ReportStatus {
     fn from(value: i64) -> Self {
         match value {

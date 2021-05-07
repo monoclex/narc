@@ -13,9 +13,13 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) {
     let data = ctx.data.read().await;
     let state = data.get::<State>().unwrap();
 
-    // SAFETY: guaranteed to never be None, as per serenity developers
-    // TODO: be paranoid anyways
-    let user_id = reaction.user_id.unwrap();
+    // `reaction.user_id` is guaranteed to be None if and only if the
+    // bot sends a reaction without cache
+    // src: https://discord.com/channels/381880193251409931/381912587505500160/840246542715584522
+    let user_id = match reaction.user_id {
+        Some(u) => u,
+        None => return,
+    };
 
     if !state.get_user(&user_id).await.can_make_report() {
         return;

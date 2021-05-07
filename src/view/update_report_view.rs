@@ -97,7 +97,7 @@ fn display_user_view<'a, 'b>(
     e.title(format!("Report (ID #{})", report.id));
 
     e.field("Reported User", report.reported_user_id.mention(), true)
-        .field("Status", format!("{:?}", report.status), true);
+        .field("Status", report.status.to_human_status(), true);
 
     if let Some(url) = report.url() {
         e.field(
@@ -120,7 +120,7 @@ fn display_user_view<'a, 'b>(
         false,
     );
 
-    if let Some(c) = report_color(report.status) {
+    if let Some(c) = report.status.to_color() {
         e.colour(c);
     }
 
@@ -215,16 +215,7 @@ fn display_mod_view<'a, 'b>(
     })
     .field("Accused User", reported_user_mention, true)
     .field("Reported By", reporter_user_mention, true)
-    .field(
-        "Status",
-        match report.status {
-            ReportStatus::Unhandled => "😴 Unhandled",
-            ReportStatus::Reviewing => "🔎 Reviewing",
-            ReportStatus::Accepted => "✅ Accepted",
-            ReportStatus::Denied => "❌ Denied",
-        },
-        true,
-    );
+    .field("Status", report.status.to_human_status(), true);
 
     if let Some(reason) = &report.reason {
         e.field("Provided Reason", reason, false);
@@ -246,18 +237,9 @@ fn display_mod_view<'a, 'b>(
         );
     }
 
-    if let Some(c) = report_color(report.status) {
+    if let Some(c) = report.status.to_color() {
         e.colour(c);
     }
 
     e
-}
-
-fn report_color(status: ReportStatus) -> Option<Colour> {
-    Some(Colour::new(match status {
-        ReportStatus::Unhandled => return None,
-        ReportStatus::Reviewing => 0xADD8E6,
-        ReportStatus::Denied => 0xFF0000,
-        ReportStatus::Accepted => 0x00FF00,
-    }))
 }

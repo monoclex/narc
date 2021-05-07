@@ -5,7 +5,7 @@ use thiserror::Error;
 use crate::{
     database::{
         models::{ReportStatus, ViewModel},
-        Database, MakeReportEffect, ServerConfiguration,
+        Database, MakeReportEffect, ReportUpdateError, ServerConfiguration,
     },
     services::{self, MakeReportError},
     state::State,
@@ -22,6 +22,8 @@ pub enum ReactionAddError {
     MakeReportError(#[from] MakeReportError),
     #[error("An error occurred while updating the view: {0}")]
     ViewUpdateError(#[from] UpdateViewError),
+    #[error("An error occurred while updating the report: {0}")]
+    ReportUpdateError(#[from] ReportUpdateError),
     #[error("Timed out")]
     TimedOut,
 }
@@ -68,6 +70,12 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
         handle_edit(&ctx, &reaction, &db).await?;
     } else if is_claim_emoji(&reaction.emoji) {
         handle_claim(&ctx, &reaction, &db).await?;
+    } else if is_accept_emoji(&reaction.emoji) {
+        reaction.delete(&ctx).await?;
+        handle_finalize(&ctx, &reaction, user_id, &db, true).await?;
+    } else if is_reject_emoji(&reaction.emoji) {
+        reaction.delete(&ctx).await?;
+        handle_finalize(&ctx, &reaction, user_id, &db, false).await?;
     }
 
     Ok(())
@@ -230,6 +238,61 @@ async fn handle_claim(
     };
 
     services::update_report_status(&ctx, &db, report.id, new_status).await?;
+
+    Ok(())
+}
+
+async fn handle_finalize(
+    ctx: &Context,
+    reaction: &Reaction,
+    reaction_user: UserId,
+    db: &Database,
+    is_accepted: bool,
+) -> Result<(), ReactionAddError> {
+    let view = db
+        .load_view_by_message(&reaction.message_id, &reaction.channel_id)
+        .await?;
+
+    let view = match view {
+        Some(ViewModel::Mod(model)) => model,
+        // if we react to a user view model, it shouldn't do anything
+        Some(_) => return Ok(()),
+        // reacting to regular messages does nothing
+        None => return Ok(()),
+    };
+
+    let report = match db.load_report(view.report_id).await? {
+        Some(r) => r,
+        None => {
+            return Err(ReactionAddError::ViewUpdateError(
+                UpdateViewError::ReportDoesntExist,
+            ))
+        }
+    };
+
+    let new_status = match is_accepted {
+        true => ReportStatus::Accepted,
+        false => ReportStatus::Denied,
+    };
+
+    db.update_mod_view_handler(report.id, reaction_user).await?;
+    services::update_report_status(&ctx, &db, report.id, new_status).await?;
+
+    if report.status != new_status {
+        if let Some(user_model) = db.load_user_view(report.id).await? {
+            let dms = report.accuser_user_id.create_dm_channel(&ctx).await?;
+
+            dms.send_message(&ctx, |m| {
+                m.content(format!(
+                    "Your report (#{}) has been {}!",
+                    report.id,
+                    new_status.to_human_status()
+                ))
+                .reference_message((dms.id, user_model.message_id))
+            })
+            .await?;
+        }
+    }
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-use serenity::model::id::*;
+use serenity::{model::id::*, utils::Colour};
 
 #[derive(Debug, Clone)]
 pub struct ReportModel {
@@ -71,5 +71,25 @@ impl Into<i64> for ReportStatus {
             Self::Accepted => 2,
             Self::Denied => 3,
         }
+    }
+}
+
+impl ReportStatus {
+    pub fn to_human_status(&self) -> &str {
+        match *self {
+            ReportStatus::Unhandled => "😴 Unhandled",
+            ReportStatus::Reviewing => "🔎 Reviewing",
+            ReportStatus::Accepted => "✅ Accepted",
+            ReportStatus::Denied => "❌ Denied",
+        }
+    }
+
+    pub fn to_color(&self) -> Option<Colour> {
+        Some(Colour::new(match self {
+            ReportStatus::Unhandled => return None,
+            ReportStatus::Reviewing => 0xADD8E6,
+            ReportStatus::Denied => 0xFF0000,
+            ReportStatus::Accepted => 0x00FF00,
+        }))
     }
 }

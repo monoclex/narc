@@ -1,13 +1,61 @@
 {
   "db": "SQLite",
-  "389d557f34b5056a8c0874de5c80001b3b7bdf69be4da8c48bdc1175e202d8d9": {
-    "query": "\nINSERT INTO reports (reporter_id)\nVALUES (?)\n            ",
+  "1bb5f375e3c38e851340c4700aef7458d0d5cbd90714419d171b4be961f812f4": {
+    "query": "\nINSERT OR REPLACE INTO discord_user_view (report_id, message_id, status)\nVALUES (?, ?, ?)\n            ",
     "describe": {
       "columns": [],
       "parameters": {
-        "Right": 1
+        "Right": 3
       },
       "nullable": []
+    }
+  },
+  "3349542f6786a9d39b6b4525fecfe565d99e1f86a94a0d8ef1598d60d55e3f5f": {
+    "query": "\nSELECT prefix FROM server_configuration\nWHERE guild_id = ?\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "prefix",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        true
+      ]
+    }
+  },
+  "350d5adb8434c75635bdb8c550cbe9261a26b395c6643eb44b7e89ef2cef1cc5": {
+    "query": "\nSELECT * FROM message_archive\nWHERE message_id = ?\nORDER BY id DESC\nLIMIT 1;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "content",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   },
   "50535afa374263f9868abbc5f8f907baf445d82f07bae812ce3f661dbbb083a4": {
@@ -20,12 +68,60 @@
           "type_info": "Int64"
         },
         {
-          "name": "emoji_builtin",
+          "name": "premium_duration",
           "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reports_channel",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "emoji_builtin",
+          "ordinal": 3,
           "type_info": "Text"
         },
         {
           "name": "emoji_custom",
+          "ordinal": 4,
+          "type_info": "Int64"
+        },
+        {
+          "name": "prefix",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        true,
+        false,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "5826494a9ccf07708efbca01a6e471cbe44289f83d276f996d450931082895ff": {
+    "query": "\nSELECT * FROM discord_user_view\nWHERE message_id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "report_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
           "ordinal": 2,
           "type_info": "Int64"
         }
@@ -35,13 +131,113 @@
       },
       "nullable": [
         false,
+        false,
+        false
+      ]
+    }
+  },
+  "7839dbc622928f017019ccfe907670f5dca86ce1647490b0d7a1af20d714d9d3": {
+    "query": "\nINSERT INTO reports (accuser_user_id, reported_user_id, guild_id, status, channel_id, message_id, reason)\nVALUES (?, ?, ?, ?, ?, ?, ?);\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 7
+      },
+      "nullable": []
+    }
+  },
+  "8f166661abc4b58f2174a4e7a273e6a8dbed64d6a3b1f153fa1a98e550358155": {
+    "query": "\nSELECT * FROM reports WHERE id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "accuser_user_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reported_user_id",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "guild_id",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 4,
+          "type_info": "Int64"
+        },
+        {
+          "name": "channel_id",
+          "ordinal": 5,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 6,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reason",
+          "ordinal": 7,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
         true,
         true
       ]
     }
   },
-  "88eb5791ab4b789763213610f98f55b1937cc6fc861d30c8ec2b2e29788c9018": {
-    "query": "\nSELECT *\nFROM reports\n        ",
+  "90e183e2dbbf2d5305e60207b9a7ce03304e1724dcac8990408e221d61ad21ef": {
+    "query": "\nUPDATE discord_mod_view\nSET handler = ?\nWHERE report_id = ?;\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
+  "a446e5f529b6a6288a4b3a7fc1c6180baf48ba649aa8e121c642903983a5ff17": {
+    "query": "\nINSERT OR REPLACE INTO discord_mod_view (report_id, channel_id, message_id, preview_archive_id, handler)\nVALUES (?, ?, ?, ?, ?)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
+    }
+  },
+  "a9635764441e173f88c943d481176b27d6f33a85f8e37402c12f672c971ac6a6": {
+    "query": "\nINSERT OR REPLACE INTO server_configuration (guild_id, reports_channel, emoji_builtin, emoji_custom, prefix)\nVALUES (?, ?, ?, ?, ?)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 5
+      },
+      "nullable": []
+    }
+  },
+  "b8a4b5996a2f78b6c716b04529e24fb3be6b71f85ae9352923828a276bd984e3": {
+    "query": "\n SELECT * FROM discord_user_view WHERE report_id = ?\n             ",
     "describe": {
       "columns": [
         {
@@ -50,18 +246,188 @@
           "type_info": "Int64"
         },
         {
-          "name": "reporter_id",
+          "name": "message_id",
           "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 2,
           "type_info": "Int64"
         }
       ],
       "parameters": {
-        "Right": 0
+        "Right": 1
       },
       "nullable": [
         false,
+        false,
         false
       ]
+    }
+  },
+  "bd9f79aea1d3e89dba6a513134610428091e54f8b6c0822a42e1146e37e28321": {
+    "query": "\nSELECT * FROM reports\nWHERE message_id = ?\n  AND accuser_user_id = ?\n                ",
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "accuser_user_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reported_user_id",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "guild_id",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 4,
+          "type_info": "Int64"
+        },
+        {
+          "name": "channel_id",
+          "ordinal": 5,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 6,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reason",
+          "ordinal": 7,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        true,
+        true,
+        true
+      ]
+    }
+  },
+  "cb524091b8d05003dbdefaf30707073e1f12e3741f5ad54189178fb1b638fda6": {
+    "query": "\nSELECT * FROM discord_mod_view\nWHERE message_id = ?\n  AND channel_id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "report_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "channel_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "preview_archive_id",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "handler",
+          "ordinal": 4,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "d557256e0f68956b6e6aaf1b1809fac62d1adf509f1ffd31b3958181dab04d41": {
+    "query": "\nUPDATE reports\nSET reason = COALESCE(?, reason),\n    status = COALESCE(?, status)\nWHERE id = ?;\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 3
+      },
+      "nullable": []
+    }
+  },
+  "da4d7a6f23d6fc6ffa8655cb5b2082afa6cf4aa4503bb021ef28a22667cf2df4": {
+    "query": "\n SELECT * FROM discord_mod_view WHERE report_id = ?\n             ",
+    "describe": {
+      "columns": [
+        {
+          "name": "report_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "channel_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "message_id",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "preview_archive_id",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "handler",
+          "ordinal": 4,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        true
+      ]
+    }
+  },
+  "f2841abb052c892034fe4fb3a3ef680636928f67b903de387788f75234d59153": {
+    "query": "\nINSERT INTO message_archive (message_id, content)\nVALUES (?, ?)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
     }
   }
 }

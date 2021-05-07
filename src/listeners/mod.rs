@@ -42,4 +42,20 @@ impl EventHandler for Listener {
             _ => {}
         }
     }
+
+    async fn reaction_remove(&self, ctx: Context, removed_reaction: Reaction) {
+        match on_reaction::reaction_removed(&ctx, &removed_reaction).await {
+            Err(error) => {
+                handle_err(
+                    &ctx,
+                    removed_reaction.channel_id,
+                    None,
+                    &error,
+                    "An error occurred during your reaction",
+                )
+                .await
+            }
+            _ => {}
+        }
+    }
 }

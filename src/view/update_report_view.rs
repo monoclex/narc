@@ -3,6 +3,7 @@ use serenity::{
     client::Context,
     model::{channel::ReactionType, id::*, prelude::User},
     prelude::Mentionable,
+    utils::Colour,
 };
 
 use crate::database::{models::*, Database, MakeReportEffect};
@@ -117,7 +118,13 @@ fn display_user_view<'a, 'b>(
             .as_deref()
             .unwrap_or("No reason provided! React with 📝 to provide one."),
         false,
-    )
+    );
+
+    if let Some(c) = report_color(report.status) {
+        e.colour(c);
+    }
+
+    e
 }
 
 async fn update_mod_view(
@@ -208,7 +215,16 @@ fn display_mod_view<'a, 'b>(
     })
     .field("Accused User", reported_user_mention, true)
     .field("Reported By", reporter_user_mention, true)
-    .field("Status", "Unclaimed", true);
+    .field(
+        "Status",
+        match report.status {
+            ReportStatus::Unhandled => "😴 Unhandled",
+            ReportStatus::Reviewing => "🔎 Reviewing",
+            ReportStatus::Accepted => "✅ Accepted",
+            ReportStatus::Denied => "❌ Denied",
+        },
+        true,
+    );
 
     if let Some(reason) = &report.reason {
         e.field("Provided Reason", reason, false);
@@ -230,5 +246,18 @@ fn display_mod_view<'a, 'b>(
         );
     }
 
+    if let Some(c) = report_color(report.status) {
+        e.colour(c);
+    }
+
     e
+}
+
+fn report_color(status: ReportStatus) -> Option<Colour> {
+    Some(Colour::new(match status {
+        ReportStatus::Unhandled => return None,
+        ReportStatus::Reviewing => 0xADD8E6,
+        ReportStatus::Denied => 0xFF0000,
+        ReportStatus::Accepted => 0x00FF00,
+    }))
 }

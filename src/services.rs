@@ -1,5 +1,5 @@
 use crate::{
-    database::{Database, MakeReportEffect, ReportUpdateError},
+    database::{models::ReportStatus, Database, MakeReportEffect, ReportUpdateError},
     view,
 };
 use serenity::{client::Context, model::id::*};
@@ -68,6 +68,18 @@ pub async fn update_report_reason(
     reason: String,
 ) -> Result<(), MakeReportError> {
     db.update_report(report_id, Some(reason), None).await?;
+    view::update_report_view(&ctx, &db, MakeReportEffect::Updated(report_id)).await?;
+    Ok(())
+}
+
+pub async fn update_report_status(
+    ctx: &Context,
+    db: &Database,
+    report_id: ReportId,
+    status: ReportStatus,
+) -> Result<(), MakeReportError> {
+    db.update_report(report_id, Option::<String>::None, Some(status))
+        .await?;
     view::update_report_view(&ctx, &db, MakeReportEffect::Updated(report_id)).await?;
     Ok(())
 }

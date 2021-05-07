@@ -3,7 +3,10 @@ use serenity::{client::Context, model::channel::Reaction};
 use thiserror::Error;
 
 use crate::{
-    database::{models::ViewModel, Database, MakeReportEffect, ServerConfiguration},
+    database::{
+        models::{ReportStatus, ViewModel},
+        Database, MakeReportEffect, ServerConfiguration,
+    },
     services::{self, MakeReportError},
     state::State,
     view::{self, UpdateViewError},
@@ -24,9 +27,6 @@ pub enum ReactionAddError {
 }
 
 pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), ReactionAddError> {
-    let data = ctx.data.read().await;
-    let state = data.get::<State>().unwrap();
-
     // `reaction.user_id` is guaranteed to be None if and only if the
     // bot sends a reaction without cache
     // src: https://discord.com/channels/381880193251409931/381912587505500160/840246542715584522
@@ -39,6 +39,9 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
     if user_id == ctx.cache.current_user_id().await {
         return Ok(());
     }
+
+    let data = ctx.data.read().await;
+    let state = data.get::<State>().unwrap();
 
     if !state.get_user(&user_id).await.can_make_report() {
         return Ok(());
@@ -63,6 +66,32 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
         }
 
         handle_edit(&ctx, &reaction, &db).await?;
+    } else if is_claim_emoji(&reaction.emoji) {
+        handle_claim(&ctx, &reaction, &db).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn reaction_removed(ctx: &Context, reaction: &Reaction) -> Result<(), ReactionAddError> {
+    // `reaction.user_id` is guaranteed to be None if and only if the
+    // bot sends a reaction without cache
+    // src: https://discord.com/channels/381880193251409931/381912587505500160/840246542715584522
+    let user_id = match reaction.user_id {
+        Some(u) => u,
+        None => return Ok(()),
+    };
+
+    // don't listen to reactions from the bot
+    if user_id == ctx.cache.current_user_id().await {
+        return Ok(());
+    }
+
+    let data = ctx.data.read().await;
+    let db = data.get::<Database>().unwrap();
+
+    if is_claim_emoji(&reaction.emoji) {
+        handle_claim(&ctx, &reaction, &db).await?;
     }
 
     Ok(())
@@ -147,6 +176,60 @@ async fn handle_edit(
         .channel_id
         .send_message(&ctx, |m| m.content("✅ Your report has been updated"))
         .await?;
+
+    Ok(())
+}
+
+async fn handle_claim(
+    ctx: &Context,
+    reaction: &Reaction,
+    db: &Database,
+) -> Result<(), ReactionAddError> {
+    let view = db
+        .load_view_by_message(&reaction.message_id, &reaction.channel_id)
+        .await?;
+
+    let view = match view {
+        Some(ViewModel::Mod(model)) => model,
+        // if we react to a user view model, it shouldn't do anything
+        Some(_) => return Ok(()),
+        // reacting to regular messages does nothing
+        None => return Ok(()),
+    };
+
+    let report = match db.load_report(view.report_id).await? {
+        Some(r) => r,
+        None => {
+            return Err(ReactionAddError::ViewUpdateError(
+                UpdateViewError::ReportDoesntExist,
+            ))
+        }
+    };
+
+    match report.status {
+        ReportStatus::Unhandled => {}
+        ReportStatus::Reviewing => {}
+        // if the report is already accepted/rejected don't put it back into reviewing
+        _ => return Ok(()),
+    };
+
+    let claim_reactions = match (reaction.message(&ctx).await?.reactions.iter())
+        .filter(|e| is_claim_emoji(&e.reaction_type))
+        .next()
+    {
+        Some(r) => r.count,
+        // a message without the reaction
+        None => return Ok(()),
+    };
+
+    // one reaction is the bot, the other are the people
+    let new_status = match claim_reactions {
+        x if x >= 2 => ReportStatus::Reviewing,
+        x if x < 2 => ReportStatus::Unhandled,
+        x => panic!("x = {}: x >= 2 == false, x < 2 == false, wtf?", x),
+    };
+
+    services::update_report_status(&ctx, &db, report.id, new_status).await?;
 
     Ok(())
 }

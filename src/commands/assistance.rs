@@ -6,8 +6,8 @@ use serenity::{
 
 use thiserror::Error;
 
-use crate::{database::Database, parsing::FailedUserParse};
-use crate::{parsing, view};
+use crate::{database::Database, parsing::FailedUserParse, services::MakeReportError};
+use crate::{parsing, services};
 
 #[derive(Debug, Error)]
 pub enum ReportCommandError {
@@ -15,8 +15,8 @@ pub enum ReportCommandError {
     NoGuild,
     #[error("Error parsing user")]
     UserParseError(#[from] FailedUserParse),
-    #[error("Error looking up user")]
-    LookupError,
+    #[error("Error occured while making report")]
+    MakeReportError(#[from] MakeReportError),
 }
 
 #[command]
@@ -33,15 +33,20 @@ pub async fn report(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     let name = args.single_quoted::<String>().unwrap();
     let user = parsing::user(&name, &ctx, &guild).await?;
-    let user = (user.user(&ctx).await).ok_or(ReportCommandError::LookupError)?;
 
     let reason = args.remains();
 
-    let effect = db
-        .make_report(guild.id, &msg.author, &user, None, reason)
-        .await?;
-    view::update_report_view(ctx, &db, effect).await;
+    services::make_report(
+        &ctx,
+        &db,
+        guild.id,
+        msg.author.id,
+        user.user_id(),
+        None,
+        None,
+        reason,
+    )
+    .await?;
 
-    println!("got to serenity `!report`");
     Ok(())
 }

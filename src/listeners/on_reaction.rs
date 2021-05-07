@@ -5,7 +5,7 @@ use serenity::{client::Context, model::channel::Reaction};
 use crate::{
     database::{Database, ServerConfiguration},
     error_handling::handle_err_dms,
-    view,
+    services, view,
 };
 
 pub async fn reaction_add(ctx: &Context, reaction: &Reaction) {
@@ -57,18 +57,19 @@ async fn handle_report(ctx: &Context, reaction: &Reaction, db: &Database) -> Res
 
     let reported_message = reaction.message(ctx).await?;
     let user_reporting = reaction.user(&ctx).await?;
-    let reported_user = reported_message.author.clone();
 
-    let effect = db
-        .make_report(
-            guild_id,
-            &user_reporting,
-            &reported_user,
-            Some(&reported_message),
-            None,
-        )
-        .await?;
-    view::update_report_view(ctx, &db, effect).await;
+    services::make_report(
+        &ctx,
+        &db,
+        guild_id,
+        user_reporting.id,
+        reported_message.author.id,
+        Some(reaction.channel_id),
+        Some(reaction.message_id),
+        None,
+    )
+    .await?;
+
     Ok(())
 }
 

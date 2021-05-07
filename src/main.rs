@@ -5,6 +5,7 @@ mod database;
 mod error_handling;
 mod listeners;
 mod parsing;
+mod services;
 mod view;
 
 use anyhow::Result;

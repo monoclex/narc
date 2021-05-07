@@ -1,5 +1,5 @@
 use serenity::{model::id::UserId, prelude::*};
-use std::{collections::HashMap, sync::RwLockWriteGuard};
+use std::collections::HashMap;
 
 /// State is used to store small bits of information about users, to make the
 /// bot feel nicer to use.

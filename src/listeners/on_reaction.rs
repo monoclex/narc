@@ -1,15 +1,24 @@
-use anyhow::Result;
 use serenity::model::prelude::*;
 use serenity::{client::Context, model::channel::Reaction};
+use thiserror::Error;
 
 use crate::{
     database::{Database, ServerConfiguration},
-    error_handling::handle_err_dms,
-    services,
+    services::{self, MakeReportError},
     state::State,
 };
 
-pub async fn reaction_add(ctx: &Context, reaction: &Reaction) {
+#[derive(Debug, Error)]
+pub enum ReactionAddError {
+    #[error("An SQL error occurred: {0}")]
+    SqlError(#[from] sqlx::Error),
+    #[error("A Discord error occurred: {0}")]
+    DiscordError(#[from] serenity::Error),
+    #[error("An error occurred while making the report: {0}")]
+    MakeReportError(#[from] MakeReportError),
+}
+
+pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), ReactionAddError> {
     let data = ctx.data.read().await;
     let state = data.get::<State>().unwrap();
 
@@ -18,55 +27,28 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) {
     // src: https://discord.com/channels/381880193251409931/381912587505500160/840246542715584522
     let user_id = match reaction.user_id {
         Some(u) => u,
-        None => return,
+        None => return Ok(()),
     };
 
     if !state.get_user(&user_id).await.can_make_report() {
-        return;
+        return Ok(());
     }
 
     let db = data.get::<Database>().unwrap();
 
-    if is_report_emoji(&reaction, &db).await {
-        let handle_report_result = handle_report(&ctx, &reaction, &db).await;
-
-        match handle_report_result {
-            Ok(_) => {}
-            Err(error) => {
-                log::error!("`handle_report` failed for {:?}: {}", reaction, error);
-
-                let user_id = match reaction.user_id {
-                    Some(id) => Ok(id),
-                    None => reaction.user(&ctx).await.map(|u| u.id),
-                };
-
-                let user_id = match user_id {
-                    Ok(u) => u,
-                    Err(load_user_error) => {
-                        log::error!(
-                            "error informing user (on reaction {:?}) about failed report ({}): {}",
-                            reaction,
-                            error,
-                            load_user_error
-                        );
-                        return;
-                    }
-                };
-
-                handle_err_dms(
-                    &ctx,
-                    user_id,
-                    None,
-                    &error,
-                    "Something went wrong when attempting to send in your report.",
-                )
-                .await;
-            }
-        }
+    if is_report_emoji(&reaction, &db).await? {
+        reaction.delete(&ctx).await?;
+        handle_report(&ctx, &reaction, &db).await?;
     }
+
+    Ok(())
 }
 
-async fn handle_report(ctx: &Context, reaction: &Reaction, db: &Database) -> Result<()> {
+async fn handle_report(
+    ctx: &Context,
+    reaction: &Reaction,
+    db: &Database,
+) -> Result<(), ReactionAddError> {
     // TODO: pass along `guild_id` or something?
     let guild_id = reaction.guild_id.unwrap(); // guaranteed by `is_report_emoji`
 
@@ -88,29 +70,22 @@ async fn handle_report(ctx: &Context, reaction: &Reaction, db: &Database) -> Res
     Ok(())
 }
 
-async fn is_report_emoji(reaction: &Reaction, db: &Database) -> bool {
+async fn is_report_emoji(reaction: &Reaction, db: &Database) -> Result<bool, sqlx::Error> {
     let guild_id = match reaction.guild_id {
         Some(guild_id) => guild_id,
         None => {
             // early return: if we do not have a guild ID, we are in in DMs.
             //               when in DMs, we cannot report messages.
-            return false;
+            return Ok(false);
         }
     };
 
-    let server_config = match db.maybe_load_server_config(guild_id).await {
-        Ok(config) => config,
-        Err(error) => {
-            log::warn!("error loading config for '{:?}': {:?}", guild_id, error);
+    let server_config = db.maybe_load_server_config(guild_id).await?;
 
-            // defaults: if we cannot load the server config, we will assume
-            //           a default configuration so that users can still
-            //           report messages.
-            None
-        }
-    };
-
-    matches_server_emoji(&reaction.emoji, server_config.as_ref())
+    Ok(matches_server_emoji(
+        &reaction.emoji,
+        server_config.as_ref(),
+    ))
 }
 
 fn matches_server_emoji(emoji: &ReactionType, server_config: Option<&ServerConfiguration>) -> bool {

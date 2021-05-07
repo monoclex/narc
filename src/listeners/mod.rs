@@ -1,6 +1,8 @@
 use serenity::client::{Context, EventHandler};
 use serenity::{async_trait, model::prelude::*};
 
+use crate::error_handling::handle_err;
+
 mod on_reaction;
 mod status_updator;
 
@@ -26,13 +28,18 @@ impl EventHandler for Listener {
     }
 
     async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
-        on_reaction::reaction_add(&ctx, &reaction).await;
-        //     match self.make_handler(ctx).handle_reaction(reaction).await {
-        //         Ok(_) => {}
-        //         Err(crate::bot::HandleReactionError::LoadError(sqlx::Error::RowNotFound)) => {
-        //             log::warn!("`handle_reaction` no server config")
-        //         }
-        //         Err(error) => log::error!("unable to handle `handle_reaction`: {:#?}", error),
-        //     };
+        match on_reaction::reaction_add(&ctx, &reaction).await {
+            Err(error) => {
+                handle_err(
+                    &ctx,
+                    reaction.channel_id,
+                    None,
+                    &error,
+                    "An error occurred during your reaction",
+                )
+                .await
+            }
+            _ => {}
+        }
     }
 }

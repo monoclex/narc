@@ -54,7 +54,7 @@ impl Database {
         let mut transaction = self.connection.begin().await?;
         sqlx::query!(
             "
-INSERT INTO server_configuration (guild_id, reports_channel, emoji_builtin, emoji_custom, prefix)
+INSERT OR REPLACE INTO server_configuration (guild_id, reports_channel, emoji_builtin, emoji_custom, prefix)
 VALUES (?, ?, ?, ?, ?)
             ",
             guild_id,

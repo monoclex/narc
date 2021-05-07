@@ -1,0 +1,67 @@
+{
+  "db": "SQLite",
+  "389d557f34b5056a8c0874de5c80001b3b7bdf69be4da8c48bdc1175e202d8d9": {
+    "query": "\nINSERT INTO reports (reporter_id)\nVALUES (?)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "50535afa374263f9868abbc5f8f907baf445d82f07bae812ce3f661dbbb083a4": {
+    "query": "\nSELECT * FROM server_configuration\nWHERE guild_id = ?\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "guild_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "emoji_builtin",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "emoji_custom",
+          "ordinal": 2,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        true,
+        true
+      ]
+    }
+  },
+  "88eb5791ab4b789763213610f98f55b1937cc6fc861d30c8ec2b2e29788c9018": {
+    "query": "\nSELECT *\nFROM reports\n        ",
+    "describe": {
+      "columns": [
+        {
+          "name": "report_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reporter_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  }
+}

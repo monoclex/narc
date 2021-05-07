@@ -1,0 +1,47 @@
+[package]
+name = "narc"
+version = "0.1.0"
+authors = ["SirJosh3917 <SirJosh3917@users.noreply.github.com>"]
+edition = "2018"
+
+# we want the entire runtime to stop upon approaching a panic.
+#
+# in the console during development, it is hard to notice that a task panicked
+# and stopping the entire process is a good way to enforce the idea that panics
+# should never happen.
+[profile.dev]
+panic = "abort"
+
+# panics are enabled for release mode, since uptime is the highest priority and
+# not necessarily correctness.
+
+[features]
+default = []
+unstable_discord_api = ["serenity/unstable_discord_api"]
+
+[dependencies]
+anyhow = "1.0.40"
+num_cpus = "1.13.0"
+dotenv = "0.15.0"
+tokio-stream = "0.1.5"
+log = "0.4.14"
+env_logger = "0.8.3"
+thiserror = "1.0.24"
+human-panic = "1.0.3"
+tracing = "0.1.26"
+tracing-subscriber = "0.2.18"
+serenity_utils = "0.6.1"
+regex = "1.5.3"
+
+[dependencies.tokio]
+version = "1.5.0"
+features = ["rt-multi-thread", "time", "macros"]
+
+[dependencies.serenity]
+version = "0.10.5"
+features = ["collector"]
+
+[dependencies.sqlx]
+version = "0.5.2"
+default-features = false
+features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate", "tls", "offline"]

@@ -210,6 +210,10 @@ fn display_mod_view<'a, 'b>(
     .field("Reported By", reporter_user_mention, true)
     .field("Status", "Unclaimed", true);
 
+    if let Some(reason) = &report.reason {
+        e.field("Provided Reason", reason, false);
+    }
+
     if let Some(preview) = preview {
         e.field("Preview", preview, false);
     }

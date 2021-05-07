@@ -1,6 +1,11 @@
-use crate::{database::Database, view};
+use crate::{
+    database::{Database, MakeReportEffect, ReportUpdateError},
+    view,
+};
 use serenity::{client::Context, model::id::*};
 use thiserror::Error;
+
+type ReportId = u64;
 
 #[derive(Debug, Error)]
 pub enum MakeReportError {
@@ -12,6 +17,8 @@ pub enum MakeReportError {
     DiscordError(#[from] serenity::Error),
     #[error("An error occured while updating the view: {0}")]
     ViewError(#[from] view::UpdateViewError),
+    #[error("An error occurred while updating the report: {0}")]
+    UpdateError(#[from] ReportUpdateError),
 }
 
 pub async fn make_report(
@@ -51,5 +58,16 @@ pub async fn make_report(
         .await?;
     view::update_report_view(ctx, &db, effect).await?;
 
+    Ok(())
+}
+
+pub async fn update_report_reason(
+    ctx: &Context,
+    db: &Database,
+    report_id: ReportId,
+    reason: String,
+) -> Result<(), MakeReportError> {
+    db.update_report(report_id, Some(reason), None).await?;
+    view::update_report_view(&ctx, &db, MakeReportEffect::Updated(report_id)).await?;
     Ok(())
 }

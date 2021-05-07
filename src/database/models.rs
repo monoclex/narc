@@ -13,6 +13,12 @@ pub struct ReportModel {
 }
 
 #[derive(Debug, Clone)]
+pub enum ViewModel {
+    User(UserViewModel),
+    Mod(ModViewModel),
+}
+
+#[derive(Debug, Clone)]
 pub struct UserViewModel {
     pub report_id: u64,
     pub message_id: MessageId,

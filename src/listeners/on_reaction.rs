@@ -3,9 +3,10 @@ use serenity::{client::Context, model::channel::Reaction};
 use thiserror::Error;
 
 use crate::{
-    database::{Database, ServerConfiguration},
+    database::{models::ViewModel, Database, MakeReportEffect, ServerConfiguration},
     services::{self, MakeReportError},
     state::State,
+    view::{self, UpdateViewError},
 };
 
 #[derive(Debug, Error)]
@@ -16,6 +17,10 @@ pub enum ReactionAddError {
     DiscordError(#[from] serenity::Error),
     #[error("An error occurred while making the report: {0}")]
     MakeReportError(#[from] MakeReportError),
+    #[error("An error occurred while updating the view: {0}")]
+    ViewUpdateError(#[from] UpdateViewError),
+    #[error("Timed out")]
+    TimedOut,
 }
 
 pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), ReactionAddError> {
@@ -30,6 +35,11 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
         None => return Ok(()),
     };
 
+    // don't listen to reactions from the bot
+    if user_id == ctx.cache.current_user_id().await {
+        return Ok(());
+    }
+
     if !state.get_user(&user_id).await.can_make_report() {
         return Ok(());
     }
@@ -39,6 +49,20 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
     if is_report_emoji(&reaction, &db).await? {
         reaction.delete(&ctx).await?;
         handle_report(&ctx, &reaction, &db).await?;
+    } else if is_refresh_emoji(&reaction.emoji) {
+        // can't delete reactions in DMs, in DMs if guild is none
+        if let Some(_) = reaction.guild_id {
+            reaction.delete(&ctx).await?;
+        }
+
+        handle_refresh(&ctx, &reaction, &db).await?;
+    } else if is_edit_emoji(&reaction.emoji) {
+        // can't delete reactions in DMs, in DMs if guild is none
+        if let Some(_) = reaction.guild_id {
+            reaction.delete(&ctx).await?;
+        }
+
+        handle_edit(&ctx, &reaction, &db).await?;
     }
 
     Ok(())
@@ -66,6 +90,63 @@ async fn handle_report(
         None,
     )
     .await?;
+
+    Ok(())
+}
+
+async fn handle_refresh(
+    ctx: &Context,
+    reaction: &Reaction,
+    db: &Database,
+) -> Result<(), ReactionAddError> {
+    let view = db
+        .load_view_by_message(&reaction.message_id, &reaction.channel_id)
+        .await?;
+
+    match view {
+        Some(ViewModel::Mod(v)) => {
+            view::update_report_view(&ctx, &db, MakeReportEffect::Updated(v.report_id)).await?
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+async fn handle_edit(
+    ctx: &Context,
+    reaction: &Reaction,
+    db: &Database,
+) -> Result<(), ReactionAddError> {
+    let view = db
+        .load_view_by_message(&reaction.message_id, &reaction.channel_id)
+        .await?;
+
+    let view = match view {
+        Some(ViewModel::User(model)) => model,
+        // if we react with :pencil: to a mod view model, it shouldn't do anything
+        Some(_) => return Ok(()),
+        // reacting with :pencil: to regular messages does nothing
+        None => return Ok(()),
+    };
+
+    let user = reaction.user(&ctx).await?;
+
+    let msg = reaction
+        .channel_id
+        .send_message(&ctx, |m| m.content("Type the reason for your report:"))
+        .await?;
+
+    let reasoning = serenity_utils::prompt::message_prompt_content(&ctx, &msg, &user, 30.0)
+        .await
+        .ok_or(ReactionAddError::TimedOut)?;
+
+    services::update_report_reason(&ctx, &db, view.report_id, reasoning).await?;
+
+    reaction
+        .channel_id
+        .send_message(&ctx, |m| m.content("✅ Your report has been updated"))
+        .await?;
 
     Ok(())
 }
@@ -104,4 +185,24 @@ fn is_unicode_emoji(reaction_type: &ReactionType, unicode_str: &str) -> bool {
         ReactionType::Unicode(ref str) => str == unicode_str,
         _ => false,
     }
+}
+
+fn is_refresh_emoji(emoji: &ReactionType) -> bool {
+    is_unicode_emoji(&emoji, "🔄")
+}
+
+fn is_edit_emoji(emoji: &ReactionType) -> bool {
+    is_unicode_emoji(&emoji, "📝")
+}
+
+fn is_claim_emoji(emoji: &ReactionType) -> bool {
+    is_unicode_emoji(&emoji, "🛄")
+}
+
+fn is_reject_emoji(emoji: &ReactionType) -> bool {
+    is_unicode_emoji(&emoji, "❌")
+}
+
+fn is_accept_emoji(emoji: &ReactionType) -> bool {
+    is_unicode_emoji(&emoji, "✅")
 }

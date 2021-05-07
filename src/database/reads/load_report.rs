@@ -8,7 +8,7 @@ impl Database {
 
         let report = sqlx::query!(
             "
-SELECT * FROM reports WHERE id = ?
+SELECT * FROM reports WHERE id = ?;
             ",
             db_id
         )

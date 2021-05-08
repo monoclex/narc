@@ -55,26 +55,14 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
         reaction.delete(&ctx).await?;
         handle_report(&ctx, &reaction, &db).await?;
     } else if is_refresh_emoji(&reaction.emoji) {
-        // can't delete reactions in DMs, in DMs if guild is none
-        if let Some(_) = reaction.guild_id {
-            reaction.delete(&ctx).await?;
-        }
-
         handle_refresh(&ctx, &reaction, &db).await?;
     } else if is_edit_emoji(&reaction.emoji) {
-        // can't delete reactions in DMs, in DMs if guild is none
-        if let Some(_) = reaction.guild_id {
-            reaction.delete(&ctx).await?;
-        }
-
         handle_edit(&ctx, &reaction, &db).await?;
     } else if is_claim_emoji(&reaction.emoji) {
         handle_claim(&ctx, &reaction, &db).await?;
     } else if is_accept_emoji(&reaction.emoji) {
-        reaction.delete(&ctx).await?;
         handle_finalize(&ctx, &reaction, user_id, &db, true).await?;
     } else if is_reject_emoji(&reaction.emoji) {
-        reaction.delete(&ctx).await?;
         handle_finalize(&ctx, &reaction, user_id, &db, false).await?;
     }
 
@@ -166,6 +154,11 @@ async fn handle_edit(
         // reacting with :pencil: to regular messages does nothing
         None => return Ok(()),
     };
+
+    // can't delete reactions in DMs, in DMs if guild is none
+    if let Some(_) = reaction.guild_id {
+        reaction.delete(&ctx).await?;
+    }
 
     let user = reaction.user(&ctx).await?;
 
@@ -269,6 +262,8 @@ async fn handle_finalize(
             ))
         }
     };
+
+    reaction.delete(&ctx).await?;
 
     let new_status = match is_accepted {
         true => ReportStatus::Accepted,

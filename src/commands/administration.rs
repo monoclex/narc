@@ -48,6 +48,7 @@ impl From<serenity_utils::Error> for SetupCommandError {
 }
 
 #[command]
+#[required_permissions(ADMINISTRATOR)]
 #[description("Sets up the server for `Narc` to use")]
 pub async fn setup(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg.guild_id.ok_or(SetupCommandError::NoGuild)?;

@@ -1,5 +1,5 @@
 use crate::{database::Database, error_handling::*};
-use serenity::{client::Context, model::channel::*};
+use serenity::{client::Context, framework::standard::DispatchError, model::channel::*};
 use serenity::{
     framework::standard::{macros::*, CommandResult},
     utils::content_safe,
@@ -19,7 +19,6 @@ pub struct Assistance;
 #[group("Administration")]
 #[description = "Commands that are for administrator use only"]
 #[commands(setup)]
-#[owners_only]
 pub struct Administration;
 
 #[hook]
@@ -49,6 +48,26 @@ pub async fn after(ctx: &Context, msg: &Message, cmd: &str, err: CommandResult) 
     .await;
 
     handle_err(&ctx, msg.channel_id, Some(msg.id), &error, error_msg).await;
+}
+
+#[hook]
+pub async fn dispatch_error(ctx: &Context, msg: &Message, err: DispatchError) {
+    let message: String = match err {
+        DispatchError::OnlyForOwners => "This command is only available for owners!".into(),
+        DispatchError::LackingPermissions(p) => {
+            format!("You are missing the following permissions: {}", p)
+        }
+        unknown => format!("Unknown dispatch error occurred: {:?}", unknown),
+    };
+
+    handle_err(
+        &ctx,
+        msg.channel_id,
+        Some(msg.id),
+        &message,
+        "A dispatch error occurred",
+    )
+    .await;
 }
 
 pub async fn dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {

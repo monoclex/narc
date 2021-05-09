@@ -10,14 +10,13 @@ mod state;
 mod view;
 
 use anyhow::Result;
-use commands::after;
 use commands::*;
+use commands::{after, dispatch_error};
 use database::Database;
 use serenity::client::Client;
 use serenity::framework::StandardFramework;
 use serenity::http::Http;
 use state::State;
-use std::collections::HashSet;
 use tracing_subscriber::filter::LevelFilter;
 
 #[tokio::main]
@@ -37,8 +36,6 @@ async fn main() -> Result<()> {
     let app_info = http.get_current_application_info().await?;
     let bot_id = app_info.id;
 
-    let administrators = vec![app_info.owner.id].into_iter().collect::<HashSet<_>>();
-
     let framework = StandardFramework::new()
         .configure(|c| {
             c.on_mention(Some(bot_id))
@@ -47,10 +44,10 @@ async fn main() -> Result<()> {
                 .ignore_webhooks(true)
                 .ignore_bots(true)
                 .no_dm_prefix(true)
-                .owners(administrators)
                 .case_insensitivity(true)
         })
         .after(after)
+        .on_dispatch_error(dispatch_error)
         .group(&ASSISTANCE_GROUP)
         .group(&ADMINISTRATION_GROUP);
 

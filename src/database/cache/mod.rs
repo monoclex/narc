@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use serenity::{model::id::GuildId, prelude::RwLock};
 
-use super::{Database, ServerConfiguration};
+use super::models::ServerConfiguration;
+use super::Database;
 
 mod get_server_config;
 mod get_server_prefix;

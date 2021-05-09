@@ -1,4 +1,26 @@
-use serenity::{model::id::*, utils::Colour};
+use serenity::{
+    model::{channel::ReactionType, id::*},
+    utils::Colour,
+};
+
+#[derive(Clone)]
+pub struct ServerConfiguration {
+    pub emoji_builtin: Option<String>,
+    pub emoji_custom: Option<u64>,
+    pub prefix: Option<String>,
+    pub reports_channel: u64,
+}
+
+impl ServerConfiguration {
+    pub fn matches_emoji(&self, emoji: &ReactionType) -> bool {
+        match (self.emoji_builtin.as_ref(), self.emoji_custom, emoji) {
+            (_, Some(custom), ReactionType::Custom { id, .. }) => custom == id.0,
+            (Some(builtin), _, ReactionType::Unicode(unicode)) => builtin == unicode,
+            (None, None, ReactionType::Unicode(unicode)) => unicode == "🚩",
+            _ => false,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ReportModel {
@@ -10,6 +32,15 @@ pub struct ReportModel {
     pub channel_id: Option<ChannelId>,
     pub message_id: Option<MessageId>,
     pub reason: Option<String>,
+}
+
+impl ReportModel {
+    pub fn url(&self) -> Option<String> {
+        self.message_id.and_then(|m| {
+            self.channel_id
+                .map(|c| format!("https://discord.com/channels/{}/{}/{}", self.guild_id, c, m))
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -42,12 +73,23 @@ pub enum ReportStatus {
     Denied,
 }
 
-impl ReportModel {
-    pub fn url(&self) -> Option<String> {
-        self.message_id.and_then(|m| {
-            self.channel_id
-                .map(|c| format!("https://discord.com/channels/{}/{}/{}", self.guild_id, c, m))
-        })
+impl ReportStatus {
+    pub fn to_human_status(&self) -> &str {
+        match *self {
+            ReportStatus::Unhandled => "😴 Unhandled",
+            ReportStatus::Reviewing => "🔎 Reviewing",
+            ReportStatus::Accepted => "✅ Accepted",
+            ReportStatus::Denied => "❌ Denied",
+        }
+    }
+
+    pub fn to_color(&self) -> Option<Colour> {
+        Some(Colour::new(match self {
+            ReportStatus::Unhandled => return None,
+            ReportStatus::Reviewing => 0xADD8E6,
+            ReportStatus::Denied => 0xFF0000,
+            ReportStatus::Accepted => 0x00FF00,
+        }))
     }
 }
 
@@ -71,25 +113,5 @@ impl Into<i64> for ReportStatus {
             Self::Accepted => 2,
             Self::Denied => 3,
         }
-    }
-}
-
-impl ReportStatus {
-    pub fn to_human_status(&self) -> &str {
-        match *self {
-            ReportStatus::Unhandled => "😴 Unhandled",
-            ReportStatus::Reviewing => "🔎 Reviewing",
-            ReportStatus::Accepted => "✅ Accepted",
-            ReportStatus::Denied => "❌ Denied",
-        }
-    }
-
-    pub fn to_color(&self) -> Option<Colour> {
-        Some(Colour::new(match self {
-            ReportStatus::Unhandled => return None,
-            ReportStatus::Reviewing => 0xADD8E6,
-            ReportStatus::Denied => 0xFF0000,
-            ReportStatus::Accepted => 0x00FF00,
-        }))
     }
 }

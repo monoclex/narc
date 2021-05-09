@@ -84,7 +84,7 @@ pub async fn setup(ctx: &Context, msg: &Message) -> CommandResult {
     let read = ctx.data.read().await;
     let db = read.get::<Database>().unwrap();
 
-    db.configure_server(guild_id, report_emote, reports_channel.id(), Some(&prefix))
+    db.save_server_configuration(guild_id, report_emote, reports_channel.id(), Some(&prefix))
         .await?;
 
     std::mem::drop(in_setup);

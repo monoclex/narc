@@ -1,6 +1,7 @@
 use serenity::model::id::GuildId;
 
-use crate::database::{Database, ServerConfiguration};
+use crate::database::models::ServerConfiguration;
+use crate::database::Database;
 
 impl Database {
     pub async fn get_server_config(

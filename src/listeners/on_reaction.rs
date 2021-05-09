@@ -4,8 +4,8 @@ use thiserror::Error;
 
 use crate::{
     database::{
-        models::{ReportStatus, ViewModel},
-        Database, MakeReportEffect, ReportUpdateError, ServerConfiguration,
+        models::{ReportStatus, ServerConfiguration, ViewModel},
+        Database, MakeReportEffect, ReportUpdateError,
     },
     services::{self, MakeReportError},
     state::State,

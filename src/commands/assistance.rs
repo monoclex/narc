@@ -31,7 +31,7 @@ pub async fn report(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     let guild = msg.guild(&ctx).await.ok_or(ReportCommandError::NoGuild)?;
 
-    let name = args.single_quoted::<String>().unwrap();
+    let name = args.single_quoted::<String>()?;
     let user = parsing::user(&name, &ctx, &guild).await?;
 
     let reason = args.remains();

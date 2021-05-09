@@ -3,7 +3,6 @@ use serenity::{
     client::Context,
     model::{channel::ReactionType, id::*, prelude::User},
     prelude::Mentionable,
-    utils::Colour,
 };
 
 use crate::database::{models::*, Database, MakeReportEffect};

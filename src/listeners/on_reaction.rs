@@ -130,6 +130,10 @@ async fn handle_refresh(
 
     match view {
         Some(ViewModel::Mod(v)) => {
+            if let Some(_) = reaction.guild_id {
+                reaction.delete(&ctx).await?;
+            }
+
             view::update_report_view(&ctx, &db, MakeReportEffect::Updated(v.report_id)).await?
         }
         _ => {}

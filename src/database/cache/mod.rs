@@ -2,27 +2,28 @@ use std::collections::HashMap;
 
 use serenity::{model::id::GuildId, prelude::RwLock};
 
-use super::Database;
+use super::{Database, ServerConfiguration};
 
+mod get_server_config;
 mod get_server_prefix;
 
 pub struct Cache {
     // TODO: find hashmap that clears old machines
-    server_prefixes: RwLock<HashMap<GuildId, Option<String>>>,
+    server_configs: RwLock<HashMap<GuildId, Option<ServerConfiguration>>>,
 }
 
 impl Cache {
     pub fn new() -> Self {
         Self {
-            server_prefixes: RwLock::new(HashMap::new()),
+            server_configs: RwLock::new(HashMap::new()),
         }
     }
 }
 
 // wiping stuff
 impl Cache {
-    pub async fn wipe_server_prefix_cache(&self, server: &GuildId) {
-        let mut lock = self.server_prefixes.write().await;
+    pub async fn wipe_server_config_cache(&self, server: &GuildId) {
+        let mut lock = self.server_configs.write().await;
         lock.remove(server);
     }
 }

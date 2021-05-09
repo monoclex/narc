@@ -132,7 +132,7 @@ async fn update_mod_view(
     report: &ReportModel,
 ) -> Result<(), UpdateViewError> {
     let view = db.load_mod_view(report.id).await?;
-    let maybe_config = db.maybe_load_server_config(report.guild_id).await?;
+    let maybe_config = db.get_server_config(&report.guild_id).await?;
     let config = maybe_config.ok_or(UpdateViewError::UnconfiguredServer)?;
 
     // TODO: handle a changed reports channel and whatnot?

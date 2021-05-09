@@ -64,12 +64,13 @@ VALUES (?, ?, ?, ?, ?)
         .await?;
         transaction.commit().await?;
 
-        self.cache.wipe_server_prefix_cache(&guild_id).await;
+        self.cache.wipe_server_config_cache(&guild_id).await;
 
         Ok(())
     }
 }
 
+#[derive(Clone)]
 pub struct ServerConfiguration {
     // pub guild_id: u64,
     pub emoji_builtin: Option<String>,
@@ -86,44 +87,6 @@ impl ServerConfiguration {
             (None, None, ReactionType::Unicode(unicode)) => unicode == "🚩",
             _ => false,
         }
-    }
-}
-
-impl Database {
-    pub async fn maybe_load_server_config(
-        &self,
-        guild_id: GuildId,
-    ) -> Result<Option<ServerConfiguration>, sqlx::Error> {
-        match self.load_server_config_raw(guild_id).await {
-            Ok(config) => Ok(Some(config)),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(why) => return Err(why),
-        }
-    }
-
-    #[instrument(skip(self))]
-    async fn load_server_config_raw(
-        &self,
-        guild_id: GuildId,
-    ) -> Result<ServerConfiguration, sqlx::Error> {
-        let guild_id = guild_id.0 as i64;
-        let server = sqlx::query!(
-            "
-SELECT * FROM server_configuration
-WHERE guild_id = ?
-            ",
-            guild_id
-        )
-        .fetch_one(&self.connection)
-        .await?;
-
-        Ok(ServerConfiguration {
-            // guild_id: server.guild_id as u64,
-            emoji_builtin: server.emoji_builtin,
-            emoji_custom: server.emoji_custom.map(|n| n as u64),
-            prefix: server.prefix,
-            reports_channel: server.reports_channel as u64,
-        })
     }
 }
 
@@ -146,20 +109,5 @@ impl Database {
             connection: pool,
             cache: Cache::new(),
         })
-    }
-}
-
-// TODO: is this useful?
-pub trait OptionalRecordExt<T> {
-    fn row_maybe(self) -> Result<Option<T>, sqlx::Error>;
-}
-
-impl<T> OptionalRecordExt<T> for Result<T, sqlx::Error> {
-    fn row_maybe(self) -> Result<Option<T>, sqlx::Error> {
-        match self {
-            Ok(row) => Ok(Some(row)),
-            Err(sqlx::Error::RowNotFound) => Ok(None),
-            Err(other) => Err(other),
-        }
     }
 }

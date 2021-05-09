@@ -306,7 +306,7 @@ async fn is_report_emoji(reaction: &Reaction, db: &Database) -> Result<bool, sql
         }
     };
 
-    let server_config = db.maybe_load_server_config(guild_id).await?;
+    let server_config = db.get_server_config(&guild_id).await?;
 
     Ok(matches_server_emoji(
         &reaction.emoji,

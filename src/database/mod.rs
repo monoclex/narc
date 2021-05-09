@@ -1,6 +1,3 @@
-//! This file handles all database related operations, to prevent SQL from
-//! being littered throughout the application.
-
 use serenity::{
     model::{
         channel::ReactionType,
@@ -41,7 +38,7 @@ impl Database {
         reports_channel: ChannelId,
         prefix: Option<&str>,
     ) -> Result<(), sqlx::Error> {
-        let guild_id = guild_id.0 as i64;
+        let db_gid = guild_id.0 as i64;
 
         let reports_channel = reports_channel.0 as i64;
 
@@ -57,7 +54,7 @@ impl Database {
 INSERT OR REPLACE INTO server_configuration (guild_id, reports_channel, emoji_builtin, emoji_custom, prefix)
 VALUES (?, ?, ?, ?, ?)
             ",
-            guild_id,
+            db_gid,
             reports_channel,
             emoji_builtin,
             emoji_custom,
@@ -66,6 +63,8 @@ VALUES (?, ?, ?, ?, ?)
         .execute(&mut transaction)
         .await?;
         transaction.commit().await?;
+
+        self.cache.wipe_server_prefix_cache(&guild_id).await;
 
         Ok(())
     }
@@ -91,42 +90,6 @@ impl ServerConfiguration {
 }
 
 impl Database {
-    pub async fn load_server_prefix(
-        &self,
-        guild_id: GuildId,
-    ) -> Result<Option<String>, sqlx::Error> {
-        // {
-        //     let cache = self.prefix_cache.read().await;
-        //     if let Some(prefix) = cache.get(&guild_id) {
-        //         return Ok(prefix.to_owned());
-        //     }
-        // }
-
-        let guild_id = guild_id.0 as i64;
-
-        let find_prefix = sqlx::query!(
-            "
-SELECT prefix FROM server_configuration
-WHERE guild_id = ?
-            ",
-            guild_id
-        )
-        .fetch_one(&self.connection)
-        .await;
-
-        let record = match find_prefix {
-            Err(sqlx::Error::RowNotFound) => return Ok(None),
-            record => record?,
-        };
-
-        // {
-        //     let mut cache = self.prefix_cache.write().await;
-        //     cache.insert(orig_gid, record.prefix.to_owned());
-        // }
-
-        Ok(record.prefix)
-    }
-
     pub async fn maybe_load_server_config(
         &self,
         guild_id: GuildId,
@@ -183,5 +146,20 @@ impl Database {
             connection: pool,
             cache: Cache::new(),
         })
+    }
+}
+
+// TODO: is this useful?
+pub trait OptionalRecordExt<T> {
+    fn row_maybe(self) -> Result<Option<T>, sqlx::Error>;
+}
+
+impl<T> OptionalRecordExt<T> for Result<T, sqlx::Error> {
+    fn row_maybe(self) -> Result<Option<T>, sqlx::Error> {
+        match self {
+            Ok(row) => Ok(Some(row)),
+            Err(sqlx::Error::RowNotFound) => Ok(None),
+            Err(other) => Err(other),
+        }
     }
 }

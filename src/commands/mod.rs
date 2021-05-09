@@ -87,5 +87,5 @@ async fn actual_dynamic_prefix(ctx: &Context, msg: &Message) -> Option<String> {
     let read = ctx.data.read().await;
     let database = read.get::<Database>().unwrap();
 
-    database.load_server_prefix(guild_id).await.ok()?
+    database.get_server_prefix(&guild_id).await.ok()?
 }

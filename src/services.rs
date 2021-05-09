@@ -32,7 +32,7 @@ pub async fn make_report(
     report_reason: Option<&str>,
 ) -> Result<(), MakeReportError> {
     // before we make a report, lets ensure that the server is configured
-    if db.maybe_load_server_config(guild_id).await?.is_none() {
+    if db.has_server_config(&guild_id).await? == false {
         return Err(MakeReportError::UnconfiguredServer);
     }
 

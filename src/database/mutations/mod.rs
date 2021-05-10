@@ -10,3 +10,7 @@ pub use update_report::*;
 mod save_mod_view;
 mod save_sever_configuration;
 mod save_user_view;
+
+mod delete_welcome;
+mod get_welcomed_servers;
+mod make_welcome;

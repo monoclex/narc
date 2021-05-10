@@ -46,4 +46,4 @@ features = ["collector"]
 [dependencies.sqlx]
 version = "0.5.2"
 default-features = false
-features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate", "tls", "offline"]
+features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate", "tls", "offline", "chrono"]

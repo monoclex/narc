@@ -52,7 +52,6 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
     let db = data.get::<Database>().unwrap();
 
     if is_report_emoji(&reaction, &db).await? {
-        reaction.delete(&ctx).await?;
         handle_report(&ctx, &reaction, &db).await?;
     } else if is_refresh_emoji(&reaction.emoji) {
         handle_refresh(&ctx, &reaction, &db).await?;
@@ -98,6 +97,8 @@ async fn handle_report(
     reaction: &Reaction,
     db: &Database,
 ) -> Result<(), ReactionAddError> {
+    reaction.delete(&ctx).await?;
+
     // TODO: pass along `guild_id` or something?
     let guild_id = reaction.guild_id.unwrap(); // guaranteed by `is_report_emoji`
 

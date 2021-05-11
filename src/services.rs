@@ -1,5 +1,6 @@
 use crate::{
     database::{models::ReportStatus, Database, MakeReportEffect, ReportUpdateError},
+    error_handling::handle_err_dms,
     view,
 };
 use serenity::{client::Context, model::id::*};
@@ -56,6 +57,27 @@ pub async fn make_report(
             report_reason,
         )
         .await?;
+
+    match effect {
+        MakeReportEffect::Duplicate(id) => {
+            // don't return an error since we don't want public chat to get the error
+            handle_err_dms(
+                &ctx,
+                user_reporting.id,
+                None,
+                &format!(
+                    "You have already submitted a report for this message (ID: {})",
+                    id
+                ),
+                "Duplicate Report",
+            )
+            .await;
+
+            return Ok(());
+        }
+        _ => {}
+    };
+
     view::update_report_view(ctx, &db, effect).await?;
 
     Ok(())

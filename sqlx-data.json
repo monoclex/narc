@@ -10,24 +10,6 @@
       "nullable": []
     }
   },
-  "3349542f6786a9d39b6b4525fecfe565d99e1f86a94a0d8ef1598d60d55e3f5f": {
-    "query": "\nSELECT prefix FROM server_configuration\nWHERE guild_id = ?\n            ",
-    "describe": {
-      "columns": [
-        {
-          "name": "prefix",
-          "ordinal": 0,
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Right": 1
-      },
-      "nullable": [
-        true
-      ]
-    }
-  },
   "350d5adb8434c75635bdb8c550cbe9261a26b395c6643eb44b7e89ef2cef1cc5": {
     "query": "\nSELECT * FROM message_archive\nWHERE message_id = ?\nORDER BY id DESC\nLIMIT 1;\n            ",
     "describe": {
@@ -58,51 +40,49 @@
       ]
     }
   },
-  "50535afa374263f9868abbc5f8f907baf445d82f07bae812ce3f661dbbb083a4": {
-    "query": "\nSELECT * FROM server_configuration\nWHERE guild_id = ?\n            ",
+  "4dcfc3a2d8a16ad992fd4b931b841231cbeedfa5a9e3d4714831b107152f486d": {
+    "query": "\nSELECT welcomed FROM welcomed_servers\nWHERE guild_id = ?;\n            ",
     "describe": {
       "columns": [
         {
-          "name": "guild_id",
+          "name": "welcomed",
           "ordinal": 0,
-          "type_info": "Int64"
-        },
-        {
-          "name": "premium_duration",
-          "ordinal": 1,
-          "type_info": "Int64"
-        },
-        {
-          "name": "reports_channel",
-          "ordinal": 2,
-          "type_info": "Int64"
-        },
-        {
-          "name": "emoji_builtin",
-          "ordinal": 3,
-          "type_info": "Text"
-        },
-        {
-          "name": "emoji_custom",
-          "ordinal": 4,
-          "type_info": "Int64"
-        },
-        {
-          "name": "prefix",
-          "ordinal": 5,
-          "type_info": "Text"
+          "type_info": "Datetime"
         }
       ],
       "parameters": {
         "Right": 1
       },
       "nullable": [
-        false,
-        true,
-        false,
-        true,
-        true,
-        true
+        false
+      ]
+    }
+  },
+  "4ed1fefecf6ff98c5abfcc8aded901005d9902fcd4436918f4e3f2b76f3464e9": {
+    "query": "\nDELETE FROM welcomed_servers\nWHERE guild_id = ?;\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
+    }
+  },
+  "50a035afa6d28164c286d38b39c89623288573d1c3ae1397ced0d09a1a806435": {
+    "query": "\nSELECT guild_id FROM welcomed_servers;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "guild_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": [
+        false
       ]
     }
   },
@@ -134,6 +114,16 @@
         false,
         false
       ]
+    }
+  },
+  "5b765c2627d26e01d9710897dba2ce64debf9f32f9751890f9fc84360a83cbd9": {
+    "query": "\nINSERT OR REPLACE INTO welcomed_servers (guild_id, welcomed)\nVALUES (?, DATETIME(\"now\"));\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": []
     }
   },
   "7839dbc622928f017019ccfe907670f5dca86ce1647490b0d7a1af20d714d9d3": {
@@ -416,6 +406,54 @@
         false,
         false,
         false,
+        true
+      ]
+    }
+  },
+  "e9910d2f01e5488480d1760352c339f3e4cf425ff1e17b01cd14aea1a8eca36a": {
+    "query": "\nSELECT * FROM server_configuration\nWHERE guild_id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "guild_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "premium_duration",
+          "ordinal": 1,
+          "type_info": "Int64"
+        },
+        {
+          "name": "reports_channel",
+          "ordinal": 2,
+          "type_info": "Int64"
+        },
+        {
+          "name": "emoji_builtin",
+          "ordinal": 3,
+          "type_info": "Text"
+        },
+        {
+          "name": "emoji_custom",
+          "ordinal": 4,
+          "type_info": "Int64"
+        },
+        {
+          "name": "prefix",
+          "ordinal": 5,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false,
+        true,
+        false,
+        true,
+        true,
         true
       ]
     }

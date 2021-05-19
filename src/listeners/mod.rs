@@ -3,6 +3,7 @@ use serenity::{async_trait, model::prelude::*};
 
 use crate::error_handling::handle_err;
 
+mod on_msg;
 mod on_reaction;
 mod status_updator;
 mod welcomer;
@@ -50,6 +51,22 @@ impl EventHandler for Listener {
                 handle_err(
                     &ctx,
                     removed_reaction.channel_id,
+                    None,
+                    &error,
+                    "An error occurred during your reaction",
+                )
+                .await
+            }
+            _ => {}
+        }
+    }
+
+    async fn message(&self, ctx: Context, message: Message) {
+        match on_msg::message(&ctx, &message).await {
+            Err(error) => {
+                handle_err(
+                    &ctx,
+                    message.channel_id,
                     None,
                     &error,
                     "An error occurred during your reaction",

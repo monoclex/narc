@@ -5,7 +5,10 @@ use serenity::{
     prelude::Mentionable,
 };
 
-use crate::database::{models::*, Database, MakeReportEffect};
+use crate::{
+    database::{models::*, Database, MakeReportEffect},
+    state::State,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -147,17 +150,22 @@ async fn update_mod_view(
 
     // TODO: handle if the report message got deleted
     let msg = match view {
-        Some(view) => {
+        Some(mod_view) => {
+            let view = Some(&mod_view);
             channel_id
-                .edit_message(&ctx, view.message_id, |m| {
-                    m.embed(|e| display_mod_view(&report, e, channel_name, reported, reporter))
+                .edit_message(&ctx, mod_view.message_id, |m| {
+                    m.embed(|e| {
+                        display_mod_view(&report, view, e, channel_name, reported, reporter)
+                    })
                 })
                 .await?
         }
         None => {
             channel_id
                 .send_message(&ctx, |m| {
-                    m.embed(|e| display_mod_view(&report, e, channel_name, reported, reporter))
+                    m.embed(|e| {
+                        display_mod_view(&report, None, e, channel_name, reported, reporter)
+                    })
                 })
                 .await?
         }
@@ -174,6 +182,17 @@ async fn update_mod_view(
 
     msg.react(&ctx, ReactionType::Unicode("✅".to_owned()))
         .await?;
+
+    match report.status {
+        ReportStatus::Unhandled | ReportStatus::Reviewing => {
+            let read = ctx.data.read().await;
+            let state = read.get::<State>().unwrap();
+            state.pin_msg(&msg, &ctx).await?;
+        }
+        _ => {
+            msg.unpin(&ctx).await?;
+        }
+    }
 
     let updated_model = ModViewModel {
         report_id: report.id,
@@ -192,6 +211,7 @@ async fn update_mod_view(
 
 fn display_mod_view<'a, 'b>(
     report: &ReportModel,
+    view: Option<&ModViewModel>,
     e: &'a mut CreateEmbed,
     channel_name: Option<String>,
     reported: User,
@@ -216,14 +236,6 @@ fn display_mod_view<'a, 'b>(
     .field("Reported By", reporter_user_mention, true)
     .field("Status", report.status.to_human_status(), true);
 
-    if let Some(reason) = &report.reason {
-        e.field("Provided Reason", reason, false);
-    }
-
-    if let Some(preview) = preview {
-        e.field("Preview", preview, false);
-    }
-
     if let Some(location_link) = report.url() {
         e.field(
             "Location",
@@ -234,6 +246,18 @@ fn display_mod_view<'a, 'b>(
             ),
             true,
         );
+    }
+
+    if let Some(handler) = view.and_then(|view| view.handler) {
+        e.field("Report Handler", format!("{}", handler.mention()), true);
+    }
+
+    if let Some(reason) = &report.reason {
+        e.field("Provided Reason", reason, false);
+    }
+
+    if let Some(preview) = preview {
+        e.field("Preview", preview, false);
     }
 
     if let Some(c) = report.status.to_color() {

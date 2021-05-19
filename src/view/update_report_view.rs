@@ -149,9 +149,9 @@ async fn update_mod_view(
     let reported = report.reported_user_id.to_user(&ctx).await?;
 
     // TODO: handle if the report message got deleted
-    let msg = match view {
+    let msg = match &view {
         Some(mod_view) => {
-            let view = Some(&mod_view);
+            let view = Some(mod_view);
             channel_id
                 .edit_message(&ctx, mod_view.message_id, |m| {
                     m.embed(|e| {
@@ -201,7 +201,7 @@ async fn update_mod_view(
         // TODO: handle valid message id in archive
         preview_archive_id: 0,
         // TODO: handle mods clicking buttons n stuff
-        handler: None,
+        handler: view.and_then(|v| v.handler),
     };
 
     db.save_mod_view(updated_model).await?;

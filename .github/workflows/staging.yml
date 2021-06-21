@@ -1,7 +1,8 @@
- 
+name: Bot Staging
+
 on:
   push:
-    branches: [staging]
+    branches: [ staging ]
 
 jobs:
   build:

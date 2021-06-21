@@ -1,7 +1,8 @@
- 
+name: Bot Prod
+
 on:
   push:
-    branches: [prod]
+    branches: [ prod ]
 
 jobs:
   build:

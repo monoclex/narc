@@ -1,0 +1,15 @@
+ 
+on:
+  push:
+    branches: [prod]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Bot Prod
+    steps:
+      - name: Trigger TriggerCD
+        uses: SirJosh3917/triggercd-action@v0.1
+        with:
+          url: ${{ secrets.PROD_URL }}
+          nonce: ${{ secrets.PROD_KEY }}

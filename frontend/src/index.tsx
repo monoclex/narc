@@ -14,6 +14,18 @@ import { deepPurple, indigo } from "@material-ui/core/colors";
 import { RecoilRoot } from "recoil";
 import { SnackbarProvider } from "notistack";
 
+//@ts-expect-error
+const MODE: "STAGING" | "PROD" =
+  process.env.REACT_APP_MODE ||
+  (() => {
+    console.warn(
+      "no REACT_APP_MODE set - set it to STAGING or PROD, assuming PROD"
+    );
+    return "PROD";
+  })();
+
+console.log(MODE);
+
 ReactDOM.render(
   <Boilerplate>
     <App />

@@ -22,7 +22,8 @@
     "web-vitals": "^1.0.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "REACT_APP_MODE=STAGING react-scripts start",
+    "start:prod": "REACT_APP_MODE=PROD react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

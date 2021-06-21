@@ -1,8 +1,7 @@
 import React, { useMemo } from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter } from "react-router-dom";
-import "./index.css";
-import App from "./App";
+import Router from "./Router";
 import reportWebVitals from "./reportWebVitals";
 import {
   createMuiTheme,
@@ -10,7 +9,7 @@ import {
   ThemeProvider,
   useMediaQuery,
 } from "@material-ui/core";
-import { deepPurple, indigo } from "@material-ui/core/colors";
+import { deepPurple, green, indigo } from "@material-ui/core/colors";
 import { RecoilRoot } from "recoil";
 import { SnackbarProvider } from "notistack";
 
@@ -28,7 +27,7 @@ console.log(MODE);
 
 ReactDOM.render(
   <Boilerplate>
-    <App />
+    <Router />
   </Boilerplate>,
   document.getElementById("root")
 );
@@ -51,7 +50,7 @@ function Boilerplate({ children }: BoilerplateProps) {
         palette: {
           type: prefersLightMode ? "light" : "dark",
           primary: indigo,
-          secondary: deepPurple,
+          secondary: green,
         },
       }),
     [prefersLightMode]

@@ -48,6 +48,7 @@ async fn main() -> Result<()> {
         })
         .after(after)
         .on_dispatch_error(dispatch_error)
+        .help(&HELP)
         .group(&ASSISTANCE_GROUP)
         .group(&ADMINISTRATION_GROUP);
 

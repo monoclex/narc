@@ -11,6 +11,9 @@ use assistance::*;
 mod administration;
 use administration::*;
 
+mod help;
+pub use help::*;
+
 #[group("Assistance")]
 #[description = "Commands that serve to aid users in getting assistance"]
 #[commands(report)]

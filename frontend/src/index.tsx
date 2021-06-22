@@ -59,14 +59,14 @@ function Boilerplate({ children }: BoilerplateProps) {
   return (
     <React.StrictMode>
       <BrowserRouter>
-        <RecoilRoot>
-          <SnackbarProvider>
-            <ThemeProvider theme={theme}>
-              <CssBaseline />
-              {children}
-            </ThemeProvider>
-          </SnackbarProvider>
-        </RecoilRoot>
+        {/* <RecoilRoot> */}
+        {/* <SnackbarProvider> */}
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          {children}
+        </ThemeProvider>
+        {/* </SnackbarProvider> */}
+        {/* </RecoilRoot> */}
       </BrowserRouter>
     </React.StrictMode>
   );

@@ -21,7 +21,7 @@ import incomingReportWebm from "../assets/incoming_report.webm";
 
 const INVITE_DISCORD_URL =
   "https://discord.com/api/oauth2/authorize?client_id=838665329604427777&permissions=125952&scope=bot";
-
+const SUPPORT_SERVER_INVITE_URL = "https://discord.gg/KP2nuBuFSC";
 const REPORT_MESSAGE_VIDEO_WIDTH_PIXELS = 484;
 
 const useStyles = makeStyles((theme) => ({
@@ -43,8 +43,12 @@ const useStyles = makeStyles((theme) => ({
     color: "#000 !important",
   },
   stupidHack: {
+    marginRight: "0.3em",
+    // marginRight: "0.05em",
+  },
+  stupidHack2: {
     // marginRight: "0.3em",
-    marginRight: "0.05em",
+    // marginRight: "0.05em",
   },
   spacedText: {
     lineHeight: "2em",
@@ -102,18 +106,19 @@ function HeroHeader() {
             color="secondary"
             href={INVITE_DISCORD_URL}
           >
-            <span className={classes.buttonText}>Invite Now</span>
+            <span className={classes.buttonText}>Invite Today</span>
           </Button>
         </Grid>
-        {/* <Grid item>
+        <Grid item>
           <Button
             className={classes.button}
             variant="contained"
             color="secondary"
+            href={SUPPORT_SERVER_INVITE_URL}
           >
-            <span className={classes.buttonText}>Learn More</span>
+            <span className={classes.buttonText}>Get Support</span>
           </Button>
-        </Grid> */}
+        </Grid>
       </Grid>
     </Grid>
   );
@@ -324,7 +329,7 @@ function Example() {
       >
         <Grid item container justify="center">
           <Typography
-            className={classes.stupidHack}
+            className={classes.stupidHack2}
             variant="h3"
             component="h2"
           >

@@ -10,7 +10,7 @@ then
 fi
 
 CONTAINER_NAME="$1"
-TOKEN="$2" 
+TOKEN="$2"
 DB_DIR="$3"
 IMAGE_NAME="$4"
 

@@ -6,15 +6,16 @@ RUN apk add --no-cache musl-dev
 # https://benjamincongdon.me/blog/2019/12/04/Fast-Rust-Docker-Builds-with-cargo-vendor/
 COPY Cargo.lock .
 COPY Cargo.toml .
-COPY src/main.rs ./src/main.rs
+
+RUN mkdir ./src/ && \
+    echo "fn main() {}" > ./src/main.rs
 RUN mkdir .cargo && \
     cargo vendor > .cargo/config
-
-RUN echo "fn main() {}" > ./src/main.rs && \
-    cargo build --release && \
-    rm ./src/main.rs
+RUN cargo build --release && \
+    rm -rf ./src/
 
 COPY . .
+
 RUN cargo build --release && \
     cargo install --path . --verbose
 

@@ -7,6 +7,7 @@ use serenity::{
     model::{
         channel::{Channel, Message, ReactionType},
         id::UserId,
+        prelude::User,
     },
 };
 
@@ -26,6 +27,8 @@ pub enum SetupCommandError {
     SqlError(#[from] sqlx::Error),
     #[error("A Discord error occurred: {0}")]
     DiscordError(#[from] serenity::Error),
+    #[error("The message you sent was unable to be parsed for an emoji. Try reacting to the message instead.")]
+    UnparseableEmoji,
     #[error("No reports channel was specified")]
     NoReportsChannelSpecified,
     #[error("An invalid reports channel was specified")]
@@ -78,7 +81,7 @@ pub async fn setup(ctx: &Context, msg: &Message) -> CommandResult {
         serenity_utils::prompt::yes_or_no_prompt(ctx, &confirmation, &msg.author, 30.0).await?;
 
     if !confirmed {
-        return Err(SetupCommandError::RejectedConfiguration)?;
+        return Err(SetupCommandError::RejectedConfiguration.into());
     }
 
     let read = ctx.data.read().await;
@@ -134,7 +137,7 @@ async fn configure_reports_channel(
     let reports_channel = reports_channel_id
         .to_channel(&ctx)
         .await
-        .map_err(|e| SetupCommandError::InvalidReportsChannelSpecified(e))?;
+        .map_err(SetupCommandError::InvalidReportsChannelSpecified)?;
 
     Ok(reports_channel)
 }
@@ -149,28 +152,64 @@ async fn configure_report_emote(
             m.embed(|e| {
                 e.title("Configure Narc (2/3)").field(
                     "Report Emote",
-                    "Please react with the emote to use for reports. Suggested: 🚩",
+                    "Please react or type the emote to use for reports. Suggested: 🚩",
                     false,
                 )
             })
         })
         .await?;
 
-    // TODO: accept response message with emote as well
-    let mut collector = msg
-        .author
-        .await_reactions(&ctx)
-        .message_id(emote_prompt.id)
-        .timeout(Duration::from_secs(30))
-        .await;
+    let text_response = accept_response(&emote_prompt, &msg.author, &ctx);
+    let reaction_response = accept_reaction(&emote_prompt, &msg.author, &ctx);
 
-    while let Some(emote) = collector.next().await {
-        if let ReactionAction::Added(reaction) = emote.as_ref() {
-            return Ok(reaction.emoji.to_owned());
+    let result = tokio::select! {
+        result = text_response => {result},
+        result = reaction_response => {result}
+    };
+    return result;
+
+    async fn accept_response(
+        prompt: &Message,
+        author: &User,
+        ctx: &Context,
+    ) -> Result<ReactionType, SetupCommandError> {
+        let text_response =
+            serenity_utils::prompt::message_prompt_content(ctx, &prompt, &author, 30.0)
+                .await
+                .ok_or(SetupCommandError::Timeout)?;
+
+        if let Some(twemoji) = (text_response.chars())
+            .take(1)
+            .find(|&c| unic::emoji::char::is_emoji(c))
+        {
+            return Ok(ReactionType::Unicode(twemoji.to_string()));
+        }
+
+        match serenity::utils::parse_emoji(text_response) {
+            Some(emoji) => Ok(dbg!(emoji.into())),
+            None => Err(SetupCommandError::UnparseableEmoji),
         }
     }
 
-    Err(SetupCommandError::Timeout)
+    async fn accept_reaction(
+        prompt: &Message,
+        author: &User,
+        ctx: &Context,
+    ) -> Result<ReactionType, SetupCommandError> {
+        let mut collector = author
+            .await_reactions(&ctx)
+            .message_id(prompt.id)
+            .timeout(Duration::from_secs(30))
+            .await;
+
+        while let Some(emote) = collector.next().await {
+            if let ReactionAction::Added(reaction) = emote.as_ref() {
+                return Ok(reaction.emoji.to_owned());
+            }
+        }
+
+        Err(SetupCommandError::Timeout)
+    }
 }
 
 async fn configure_prefix(msg: &Message, ctx: &Context) -> Result<String, SetupCommandError> {
@@ -214,7 +253,7 @@ impl<'ctx> InSetup<'ctx> {
 impl<'ctx> Drop for InSetup<'ctx> {
     fn drop(&mut self) {
         let ctx = self.ctx.clone();
-        let user_id = self.user_id.clone();
+        let user_id = *self.user_id;
 
         tokio::spawn(async move {
             let lock = ctx.data.read().await;

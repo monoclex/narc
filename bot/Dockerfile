@@ -7,12 +7,10 @@ RUN apk add --no-cache musl-dev
 COPY Cargo.lock .
 COPY Cargo.toml .
 
-RUN mkdir ./src/ && \
-    echo "fn main() {}" > ./src/main.rs
-RUN mkdir .cargo && \
-    cargo vendor > .cargo/config
-RUN cargo build --release && \
-    rm -rf ./src/
+RUN mkdir ./src/
+RUN echo "fn main() {}" > ./src/main.rs
+RUN cargo build --release
+RUN rm -rf ./src/
 
 COPY . .
 

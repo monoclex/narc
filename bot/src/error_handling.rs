@@ -38,7 +38,6 @@ pub async fn handle_err_dms<E: std::fmt::Display, M: ToString>(
                 error,
                 e
             );
-            return;
         }
     }
 }

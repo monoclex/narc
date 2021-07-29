@@ -32,7 +32,7 @@ impl State {
 
     pub async fn pin_msg(&self, msg: &Message, ctx: &Context) -> serenity::Result<()> {
         let mut pinned = self.pinned_msgs.write().await;
-        pinned.push((msg.channel_id.clone(), msg.id.clone()));
+        pinned.push((msg.channel_id, msg.id));
         msg.pin(ctx).await
     }
 

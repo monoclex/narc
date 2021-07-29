@@ -36,15 +36,15 @@ pub enum SetupCommandError {
     #[error("Too many channels specified (only one allowed)")]
     TooManyReportsChannelSpecified,
     #[error("Invalid confirmation: {0}")]
-    InvalidConfirmation(serenity_utils::Error),
+    InvalidConfirmation(crate::serenity_utils::Error),
     #[error("Configuration rejected")]
     RejectedConfiguration,
 }
 
-impl From<serenity_utils::Error> for SetupCommandError {
-    fn from(e: serenity_utils::Error) -> Self {
+impl From<crate::serenity_utils::Error> for SetupCommandError {
+    fn from(e: crate::serenity_utils::Error) -> Self {
         match e {
-            serenity_utils::Error::TimeoutError => Self::Timeout,
+            crate::serenity_utils::Error::TimeoutError => Self::Timeout,
             e => Self::InvalidConfirmation(e),
         }
     }
@@ -78,7 +78,8 @@ pub async fn setup(ctx: &Context, msg: &Message) -> CommandResult {
         .await?;
 
     let confirmed =
-        serenity_utils::prompt::yes_or_no_prompt(ctx, &confirmation, &msg.author, 30.0).await?;
+        crate::serenity_utils::prompt::yes_or_no_prompt(ctx, &confirmation, &msg.author, 30.0)
+            .await?;
 
     if !confirmed {
         return Err(SetupCommandError::RejectedConfiguration.into());
@@ -121,7 +122,7 @@ async fn configure_reports_channel(
         .await?;
 
     let reports_channel_response =
-        serenity_utils::prompt::message_prompt_content(ctx, msg, &msg.author, 30.0)
+        crate::serenity_utils::prompt::message_prompt_content(ctx, msg, &msg.author, 30.0)
             .await
             .ok_or(SetupCommandError::Timeout)?;
 
@@ -174,7 +175,7 @@ async fn configure_report_emote(
         ctx: &Context,
     ) -> Result<ReactionType, SetupCommandError> {
         let text_response =
-            serenity_utils::prompt::message_prompt_content(ctx, &prompt, &author, 30.0)
+            crate::serenity_utils::prompt::message_prompt_content(ctx, &prompt, &author, 30.0)
                 .await
                 .ok_or(SetupCommandError::Timeout)?;
 
@@ -226,10 +227,14 @@ async fn configure_prefix(msg: &Message, ctx: &Context) -> Result<String, SetupC
         })
         .await?;
 
-    let prompt =
-        serenity_utils::prompt::message_prompt_content(ctx, &prefix_prompt, &msg.author, 30.0)
-            .await
-            .ok_or(SetupCommandError::Timeout)?;
+    let prompt = crate::serenity_utils::prompt::message_prompt_content(
+        ctx,
+        &prefix_prompt,
+        &msg.author,
+        30.0,
+    )
+    .await
+    .ok_or(SetupCommandError::Timeout)?;
 
     Ok(prompt)
 }

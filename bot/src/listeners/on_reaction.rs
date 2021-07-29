@@ -129,15 +129,12 @@ async fn handle_refresh(
         .load_view_by_message(&reaction.message_id, &reaction.channel_id)
         .await?;
 
-    match view {
-        Some(ViewModel::Mod(v)) => {
-            if let Some(_) = reaction.guild_id {
-                reaction.delete(&ctx).await?;
-            }
-
-            view::update_report_view(&ctx, &db, MakeReportEffect::Updated(v.report_id)).await?
+    if let Some(ViewModel::Mod(v)) = view {
+        if reaction.guild_id.is_some() {
+            reaction.delete(&ctx).await?;
         }
-        _ => {}
+
+        view::update_report_view(&ctx, &db, MakeReportEffect::Updated(v.report_id)).await?
     }
 
     Ok(())
@@ -161,7 +158,7 @@ async fn handle_edit(
     };
 
     // can't delete reactions in DMs, in DMs if guild is none
-    if let Some(_) = reaction.guild_id {
+    if reaction.guild_id.is_some() {
         reaction.delete(&ctx).await?;
     }
 
@@ -172,7 +169,7 @@ async fn handle_edit(
         .send_message(&ctx, |m| m.content("Type the reason for your report:"))
         .await?;
 
-    let reasoning = serenity_utils::prompt::message_prompt_content(&ctx, &msg, &user, 30.0)
+    let reasoning = crate::serenity_utils::prompt::message_prompt_content(&ctx, &msg, &user, 30.0)
         .await
         .ok_or(ReactionAddError::TimedOut)?;
 
@@ -220,8 +217,7 @@ async fn handle_claim(
     };
 
     let claim_reactions = match (reaction.message(&ctx).await?.reactions.iter())
-        .filter(|e| is_claim_emoji(&e.reaction_type))
-        .next()
+        .find(|e| is_claim_emoji(&e.reaction_type))
     {
         Some(r) => r.count,
         // a message without the reaction
@@ -286,7 +282,7 @@ async fn handle_finalize(
                 m.content(format!(
                     "Your report (#{}) has been {}!",
                     report.id,
-                    new_status.to_human_status()
+                    new_status.into_human_status()
                 ))
                 .reference_message((dms.id, user_model.message_id))
             })

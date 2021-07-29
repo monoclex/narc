@@ -1,4 +1,5 @@
 use lazy_regex::regex;
+#[allow(unused)] // `regex!` macro uses `lazy_static!`
 use lazy_static::lazy_static;
 use regex::Regex;
 use serenity::model::id::ChannelId;
@@ -12,6 +13,6 @@ pub fn channel_mention(msg: &str) -> Vec<ChannelId> {
         .captures_iter(msg)
         .map(|captures| captures.get(1).unwrap())
         .filter_map(|m| m.as_str().parse::<u64>().ok())
-        .map(|number| ChannelId(number))
+        .map(ChannelId)
         .collect()
 }

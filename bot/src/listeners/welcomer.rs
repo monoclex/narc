@@ -27,11 +27,8 @@ pub async fn ready(ctx: &Context, guilds: impl Iterator<Item = GuildId>) {
 
     let servers_to_send_welcome_messages_to = guilds.difference(&servers);
     for server in servers_to_send_welcome_messages_to {
-        match welcome(&ctx, &db, &GuildId(*server)).await {
-            Err(error) => {
-                log::error!("error while welcoming server: {}", error);
-            }
-            _ => {}
+        if let Err(error) = welcome(&ctx, &db, &GuildId(*server)).await {
+            log::error!("error while welcoming server: {}", error);
         }
     }
 }
@@ -41,18 +38,15 @@ pub async fn guild_create(ctx: &Context, guild: &Guild) {
     let db = data.get::<Database>().unwrap();
 
     // even if we've welcomed them in the past, welcome them again
-    match welcome(&ctx, &db, &guild.id).await {
-        Err(error) => {
-            handle_err_dms(
-                ctx,
-                guild.owner_id,
-                None,
-                &error,
-                "An error occurred while welcoming you",
-            )
-            .await;
-        }
-        _ => {}
+    if let Err(error) = welcome(&ctx, &db, &guild.id).await {
+        handle_err_dms(
+            ctx,
+            guild.owner_id,
+            None,
+            &error,
+            "An error occurred while welcoming you",
+        )
+        .await;
     }
 }
 

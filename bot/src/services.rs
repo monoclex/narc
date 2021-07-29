@@ -33,7 +33,7 @@ pub async fn make_report(
     report_reason: Option<&str>,
 ) -> Result<(), MakeReportError> {
     // before we make a report, lets ensure that the server is configured
-    if db.has_server_config(&guild_id).await? == false {
+    if !(db.has_server_config(&guild_id).await?) {
         return Err(MakeReportError::UnconfiguredServer);
     }
 
@@ -58,24 +58,21 @@ pub async fn make_report(
         )
         .await?;
 
-    match effect {
-        MakeReportEffect::Duplicate(id) => {
-            // don't return an error since we don't want public chat to get the error
-            handle_err_dms(
-                &ctx,
-                user_reporting.id,
-                None,
-                &format!(
-                    "You have already submitted a report for this message (ID: {})",
-                    id
-                ),
-                "Duplicate Report",
-            )
-            .await;
+    if let MakeReportEffect::Duplicate(id) = effect {
+        // don't return an error since we don't want public chat to get the error
+        handle_err_dms(
+            &ctx,
+            user_reporting.id,
+            None,
+            &format!(
+                "You have already submitted a report for this message (ID: {})",
+                id
+            ),
+            "Duplicate Report",
+        )
+        .await;
 
-            return Ok(());
-        }
-        _ => {}
+        return Ok(());
     };
 
     view::update_report_view(ctx, &db, effect).await?;

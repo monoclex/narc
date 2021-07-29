@@ -54,10 +54,10 @@ async fn update_user_view(
     let view = db.load_user_view(report.id).await?;
     let dms = report.accuser_user_id.create_dm_channel(&ctx).await?;
 
-    let channel_name = match report.channel_id {
-        Some(c) => c.name(&ctx).await,
-        None => None,
-    };
+    let channel_name = report
+        .channel_name(&ctx)
+        .await
+        .unwrap_or_else(|e| e.to_string());
 
     let msg = match view {
         Some(view) => {
@@ -91,26 +91,18 @@ async fn update_user_view(
     Ok(())
 }
 
-fn display_user_view<'a, 'b>(
+fn display_user_view<'a>(
     report: &ReportModel,
     e: &'a mut CreateEmbed,
-    channel_name: Option<String>,
+    channel_name: String,
 ) -> &'a mut CreateEmbed {
     e.title(format!("Report (ID #{})", report.id));
 
     e.field("Reported User", report.reported_user_id.mention(), true)
-        .field("Status", report.status.to_human_status(), true);
+        .field("Status", report.status.into_human_status(), true);
 
     if let Some(url) = report.url() {
-        e.field(
-            "Location",
-            format!(
-                "[#{}]({})",
-                channel_name.unwrap_or("error fetching channel name".to_owned()),
-                url
-            ),
-            true,
-        );
+        e.field("Location", format!("[#{}]({})", channel_name, url), true);
     }
 
     e.field(
@@ -122,7 +114,7 @@ fn display_user_view<'a, 'b>(
         false,
     );
 
-    if let Some(c) = report.status.to_color() {
+    if let Some(c) = report.status.into_color() {
         e.colour(c);
     }
 
@@ -140,10 +132,10 @@ async fn update_mod_view(
 
     // TODO: handle a changed reports channel and whatnot?
     let channel_id = ChannelId(config.reports_channel);
-    let channel_name = match report.channel_id {
-        Some(c) => c.name(&ctx).await,
-        None => None,
-    };
+    let channel_name = report
+        .channel_name(&ctx)
+        .await
+        .unwrap_or_else(|e| e.to_string());
 
     let reporter = report.accuser_user_id.to_user(&ctx).await?;
     let reported = report.reported_user_id.to_user(&ctx).await?;
@@ -209,11 +201,11 @@ async fn update_mod_view(
     Ok(())
 }
 
-fn display_mod_view<'a, 'b>(
+fn display_mod_view<'a>(
     report: &ReportModel,
     view: Option<&ModViewModel>,
     e: &'a mut CreateEmbed,
-    channel_name: Option<String>,
+    channel_name: String,
     reported: User,
     reporter: User,
 ) -> &'a mut CreateEmbed {
@@ -234,16 +226,12 @@ fn display_mod_view<'a, 'b>(
     })
     .field("Accused User", reported_user_mention, true)
     .field("Reported By", reporter_user_mention, true)
-    .field("Status", report.status.to_human_status(), true);
+    .field("Status", report.status.into_human_status(), true);
 
     if let Some(location_link) = report.url() {
         e.field(
             "Location",
-            format!(
-                "[#{}]({})",
-                channel_name.unwrap_or("error fetching channel name".to_owned()),
-                location_link
-            ),
+            format!("[#{}]({})", channel_name, location_link),
             true,
         );
     }
@@ -260,7 +248,7 @@ fn display_mod_view<'a, 'b>(
         e.field("Preview", preview, false);
     }
 
-    if let Some(c) = report.status.to_color() {
+    if let Some(c) = report.status.into_color() {
         e.colour(c);
     }
 

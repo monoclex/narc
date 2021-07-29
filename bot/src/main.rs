@@ -5,6 +5,7 @@ mod database;
 mod error_handling;
 mod listeners;
 mod parsing;
+pub mod serenity_utils;
 mod services;
 mod state;
 mod view;

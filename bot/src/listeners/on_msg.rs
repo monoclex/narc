@@ -39,10 +39,7 @@ pub async fn message(ctx: &Context, message: &Message) -> Result<(), MessageErro
             .ok_or(MessageError::NoPinReference)?;
 
         fn map(m: &MessageReference) -> Option<(ChannelId, MessageId)> {
-            match m.message_id {
-                Some(m_id) => Some((m.channel_id, m_id)),
-                _ => None,
-            }
+            m.message_id.map(|m_id| (m.channel_id, m_id))
         }
 
         pinned
@@ -60,10 +57,7 @@ pub async fn message(ctx: &Context, message: &Message) -> Result<(), MessageErro
             .ok_or(MessageError::NoPinReference)?;
 
         fn map(m: &MessageReference) -> Option<(ChannelId, MessageId)> {
-            match m.message_id {
-                Some(m_id) => Some((m.channel_id, m_id)),
-                _ => None,
-            }
+            m.message_id.map(|m_id| (m.channel_id, m_id))
         }
 
         let pinned_msg_index = pinned

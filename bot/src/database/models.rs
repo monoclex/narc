@@ -2,6 +2,7 @@ use serenity::{
     model::{channel::ReactionType, id::*},
     utils::Colour,
 };
+use thiserror::Error;
 
 #[derive(Clone)]
 pub struct ServerConfiguration {
@@ -22,6 +23,16 @@ impl ServerConfiguration {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum ChannelLookupError {
+    #[error("Report has no channel!")]
+    NoReportChannel,
+    #[error("Non GuildChannel: {0}")]
+    NonGuildChannel(String),
+    #[error("Discord error: {0}")]
+    Discord(#[from] serenity::Error),
+}
+
 #[derive(Debug, Clone)]
 pub struct ReportModel {
     pub id: u64,
@@ -40,6 +51,33 @@ impl ReportModel {
             self.channel_id
                 .map(|c| format!("https://discord.com/channels/{}/{}/{}", self.guild_id, c, m))
         })
+    }
+
+    pub async fn channel_name(
+        &self,
+        ctx: &serenity::client::Context,
+    ) -> Result<String, ChannelLookupError> {
+        fn channel_to_name(channel: serenity::model::channel::Channel) -> String {
+            match channel {
+                serenity::model::channel::Channel::Guild(c) => c.kind.name().to_string(),
+                serenity::model::channel::Channel::Private(c) => c.kind.name().to_string(),
+                serenity::model::channel::Channel::Category(c) => c.kind.name().to_string(),
+                _ => "unknown channel type".to_string(),
+            }
+        }
+
+        match self.channel_id {
+            Some(c) => match c.name(&ctx).await {
+                Some(name) => Ok(name),
+                None => match ctx.http.get_channel(c.0).await? {
+                    serenity::model::channel::Channel::Guild(channel) => Ok(channel.name),
+                    channel => Err(ChannelLookupError::NonGuildChannel(channel_to_name(
+                        channel,
+                    ))),
+                },
+            },
+            None => Err(ChannelLookupError::NoReportChannel),
+        }
     }
 }
 
@@ -74,8 +112,8 @@ pub enum ReportStatus {
 }
 
 impl ReportStatus {
-    pub fn to_human_status(&self) -> &str {
-        match *self {
+    pub fn into_human_status(self) -> &'static str {
+        match self {
             ReportStatus::Unhandled => "😴 Unhandled",
             ReportStatus::Reviewing => "🔎 Reviewing",
             ReportStatus::Accepted => "✅ Accepted",
@@ -83,7 +121,7 @@ impl ReportStatus {
         }
     }
 
-    pub fn to_color(&self) -> Option<Colour> {
+    pub fn into_color(self) -> Option<Colour> {
         Some(Colour::new(match self {
             ReportStatus::Unhandled => return None,
             ReportStatus::Reviewing => 0xADD8E6,
@@ -105,13 +143,13 @@ impl From<i64> for ReportStatus {
     }
 }
 
-impl Into<i64> for ReportStatus {
-    fn into(self) -> i64 {
-        match self {
-            Self::Unhandled => 0,
-            Self::Reviewing => 1,
-            Self::Accepted => 2,
-            Self::Denied => 3,
+impl From<ReportStatus> for i64 {
+    fn from(val: ReportStatus) -> Self {
+        match val {
+            ReportStatus::Unhandled => 0,
+            ReportStatus::Reviewing => 1,
+            ReportStatus::Accepted => 2,
+            ReportStatus::Denied => 3,
         }
     }
 }

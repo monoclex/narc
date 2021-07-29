@@ -42,17 +42,12 @@ pub async fn user(
 
     // by exact member nickname
     // TODO: check if this works
-    if let Some((_, member)) = guild
-        .members
-        .iter()
-        .filter(|(_, m)| {
-            m.nick
-                .as_ref()
-                .map(|n| n.as_str() == argument)
-                .unwrap_or(false)
-        })
-        .next()
-    {
+    if let Some((_, member)) = guild.members.iter().find(|(_, m)| {
+        m.nick
+            .as_ref()
+            .map(|n| n.as_str() == argument)
+            .unwrap_or(false)
+    }) {
         return Ok(member.to_owned().into());
     }
 
@@ -125,20 +120,20 @@ impl ParsedUser {
     }
 }
 
-impl Into<ParsedUser> for u64 {
-    fn into(self) -> ParsedUser {
-        ParsedUser::Id(self.into())
+impl From<u64> for ParsedUser {
+    fn from(val: u64) -> Self {
+        ParsedUser::Id(val.into())
     }
 }
 
-impl Into<ParsedUser> for UserId {
-    fn into(self) -> ParsedUser {
-        ParsedUser::Id(self)
+impl From<UserId> for ParsedUser {
+    fn from(val: UserId) -> Self {
+        ParsedUser::Id(val)
     }
 }
 
-impl Into<ParsedUser> for Member {
-    fn into(self) -> ParsedUser {
-        ParsedUser::Member(self)
+impl From<Member> for ParsedUser {
+    fn from(val: Member) -> Self {
+        ParsedUser::Member(val)
     }
 }

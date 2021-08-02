@@ -3,7 +3,7 @@ use crate::{
     error_handling::handle_err_dms,
     view,
 };
-use serenity::{client::Context, model::id::*};
+use serenity::{client::Context, model::id::*, prelude::Mentionable};
 use thiserror::Error;
 
 type ReportId = u64;
@@ -35,6 +35,23 @@ pub async fn make_report(
     // before we make a report, lets ensure that the server is configured
     if !(db.has_server_config(&guild_id).await?) {
         return Err(MakeReportError::UnconfiguredServer);
+    }
+
+    if db.load_protected_user(&guild_id, &reported_user_id).await? {
+        // don't return an error since we don't want public chat to get the error
+        handle_err_dms(
+            &ctx,
+            accuser_user_id,
+            None,
+            &format!(
+                "This user ({}) is protected on this server - you cannot report them",
+                reported_user_id.mention()
+            ),
+            "Protected User",
+        )
+        .await;
+
+        return Ok(());
     }
 
     let user_reporting = accuser_user_id.to_user(&ctx).await?;

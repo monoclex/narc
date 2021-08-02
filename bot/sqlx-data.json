@@ -1,5 +1,15 @@
 {
   "db": "SQLite",
+  "01b2be0e5f8bdd1685e1fd36eceed69d1f0878c6a4f82658cc289c04a5bc61a5": {
+    "query": "\nINSERT OR REPLACE INTO protected_users (guild_id, protected_user_id)\nVALUES (?, ?)\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": []
+    }
+  },
   "1bb5f375e3c38e851340c4700aef7458d0d5cbd90714419d171b4be961f812f4": {
     "query": "\nINSERT OR REPLACE INTO discord_user_view (report_id, message_id, status)\nVALUES (?, ?, ?)\n            ",
     "describe": {
@@ -126,12 +136,46 @@
       "nullable": []
     }
   },
+  "6482bc799d56ccb478920a0e734d02142eb906ba71b1ec4e3fe468b60c303e6a": {
+    "query": "\nSELECT * FROM protected_users\nWHERE guild_id = ?\n  AND protected_user_id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "guild_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "protected_user_id",
+          "ordinal": 1,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "7839dbc622928f017019ccfe907670f5dca86ce1647490b0d7a1af20d714d9d3": {
     "query": "\nINSERT INTO reports (accuser_user_id, reported_user_id, guild_id, status, channel_id, message_id, reason)\nVALUES (?, ?, ?, ?, ?, ?, ?);\n            ",
     "describe": {
       "columns": [],
       "parameters": {
         "Right": 7
+      },
+      "nullable": []
+    }
+  },
+  "87a65184ecaf47837c1ed19f69eb0a0709e9d958a6f91d188bd09a66913cc3d2": {
+    "query": "\nDELETE FROM protected_users\nWHERE guild_id = ?\n  AND protected_user_id = ?\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 2
       },
       "nullable": []
     }
@@ -224,6 +268,24 @@
         "Right": 5
       },
       "nullable": []
+    }
+  },
+  "b5c17c559a61be5d08caea33fe9efe39570c00c1e51a25a2a3aac394519db867": {
+    "query": "\nSELECT protected_user_id FROM protected_users\nWHERE guild_id = ?;\n            ",
+    "describe": {
+      "columns": [
+        {
+          "name": "protected_user_id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
     }
   },
   "b8a4b5996a2f78b6c716b04529e24fb3be6b71f85ae9352923828a276bd984e3": {

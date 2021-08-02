@@ -14,3 +14,5 @@ mod save_user_view;
 mod delete_welcome;
 mod get_welcomed_servers;
 mod make_welcome;
+
+mod set_protected_user;

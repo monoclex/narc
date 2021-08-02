@@ -21,7 +21,7 @@ pub struct Assistance;
 
 #[group("Administration")]
 #[description = "Commands that are for administrator use only"]
-#[commands(setup)]
+#[commands(setup, protect, protected)]
 pub struct Administration;
 
 #[hook]

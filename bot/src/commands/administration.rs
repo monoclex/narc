@@ -1,19 +1,24 @@
-use std::time::Duration;
+use std::{fmt::Display, str::ParseBoolError, time::Duration};
 
 use serenity::{
     client::Context,
     collector::ReactionAction,
-    framework::standard::{macros::*, CommandResult},
+    framework::standard::{macros::*, ArgError, Args, CommandResult},
     model::{
         channel::{Channel, Message, ReactionType},
-        id::UserId,
+        id::{GuildId, UserId},
         prelude::User,
     },
 };
 
 use thiserror::Error;
 
-use crate::{database::Database, parsing, state::State};
+use crate::{
+    database::Database,
+    parsing::{self, FailedUserParse, ParsedUser},
+    serenity_utils,
+    state::State,
+};
 use serenity::futures::StreamExt;
 use serenity::prelude::Mentionable;
 
@@ -268,4 +273,227 @@ impl<'ctx> Drop for InSetup<'ctx> {
                 .await;
         });
     }
+}
+
+#[derive(Debug, Error)]
+pub enum ProtectError {
+    #[error("Message was not sent from within a guild")]
+    NoGuild,
+    #[error("No user was specified")]
+    NoUserSpecified,
+    #[error("Unable to load the user mentioned")]
+    UserLoadError(serenity::Error),
+    #[error("An SQL error occurred: {0}")]
+    SqlError(#[from] sqlx::Error),
+    #[error("A Discord error occurred: {0}")]
+    DiscordError(#[from] serenity::Error),
+    #[error("Error parsing user")]
+    UserParseError(#[from] FailedUserParse),
+    #[error("Error parsing new status")]
+    StatusParseError(#[from] ParseBoolError),
+}
+
+#[command]
+#[required_permissions(ADMINISTRATOR)]
+#[description("Set (or show) a user's protected status.")]
+pub async fn protect(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx).await.ok_or(ProtectError::NoUserSpecified)?;
+
+    let user = match args.single_quoted::<String>() {
+        Ok(name) => {
+            let user = parsing::user(&name, &ctx, &guild).await?;
+            let user = ctx
+                .http
+                .get_user(user.user_id().0)
+                .await
+                .map_err(ProtectError::UserLoadError)?;
+            user
+        }
+        Err(ArgError::Eos) => return Err(ProtectError::NoUserSpecified.into()),
+        Err(_) => unreachable!("infallible"),
+    };
+
+    let new_status = match args.single_quoted::<bool>() {
+        Ok(status) => Some(status),
+        Err(ArgError::Eos) => None,
+        Err(ArgError::Parse(p)) => return Err(p.into()),
+        Err(_) => unreachable!("non exhaustive arg error"),
+    };
+
+    match new_status {
+        Some(new_status) => {
+            update_protected_user_status(ctx, msg, &guild.id, user, new_status).await?
+        }
+        None => show_protected_user_status(ctx, msg, &guild.id, user).await?,
+    };
+
+    Ok(())
+}
+
+#[command]
+#[required_permissions(ADMINISTRATOR)]
+#[description("Show a user's protected status.")]
+pub async fn protected(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx).await.ok_or(ProtectError::NoGuild)?;
+
+    let user = match args.single_quoted::<String>() {
+        Ok(name) => {
+            let user = parsing::user(&name, &ctx, &guild).await?;
+            let user = ctx
+                .http
+                .get_user(user.user_id().0)
+                .await
+                .map_err(ProtectError::UserLoadError)?;
+            Some(user)
+        }
+        Err(ArgError::Eos) => None,
+        Err(_) => unreachable!("infallible"),
+    };
+
+    match user {
+        Some(user) => show_protected_user_status(ctx, msg, &guild.id, user).await?,
+        None => show_protected_users(ctx, msg, &guild.id).await?,
+    };
+
+    Ok(())
+}
+
+async fn show_protected_users(
+    ctx: &Context,
+    msg: &Message,
+    guild: &GuildId,
+) -> Result<(), ProtectError> {
+    use std::fmt::Write;
+
+    let data = ctx.data.read().await;
+    let db = data.get::<Database>().unwrap();
+
+    let protected_users = db.load_protected_users(guild).await?;
+
+    // roughly how many bytes the string needs to be
+    const MAX_LENGTH: usize = 2048;
+    let mut user_list = String::with_capacity(MAX_LENGTH + 100);
+
+    let mut iter = protected_users.into_iter();
+
+    if let Some(user) = iter.next() {
+        write!(user_list, "{}", user.mention()).unwrap();
+    }
+
+    let mut last_len = user_list.len();
+    for user in iter {
+        write!(user_list, ", {}", user.mention()).unwrap();
+
+        const ETC: &str = ", ...";
+        if user_list.len() > MAX_LENGTH + ETC.len() {
+            // TODO: there's gotta be a safe way to shrink the string
+            user_list = user_list[0..last_len].to_string();
+
+            user_list.push_str(ETC);
+            break;
+        }
+
+        last_len = user_list.len();
+    }
+
+    msg.channel_id
+        .send_message(ctx, |m| {
+            m.embed(|e| {
+                e.title("Protected Users")
+                    .field("Users", user_list, false)
+                    .field(
+                        "Note",
+                        "At this time, there is no paging mechanism for showing multiple users.",
+                        true,
+                    )
+            })
+        })
+        .await?;
+
+    Ok(())
+}
+
+async fn show_protected_user_status(
+    ctx: &Context,
+    msg: &Message,
+    guild: &GuildId,
+    user: User,
+) -> Result<(), ProtectError> {
+    let data = ctx.data.read().await;
+    let db = data.get::<Database>().unwrap();
+
+    let status = db.load_protected_user(guild, &user.id).await?;
+
+    fn bool_to_yesno(b: bool) -> &'static str {
+        match b {
+            true => "YES",
+            false => "NO",
+        }
+    }
+
+    fn bool_to_isisnt(b: bool) -> &'static str {
+        match b {
+            true => "is",
+            false => "is not",
+        }
+    }
+
+    msg.channel_id
+        .send_message(&ctx, |m| {
+            m.embed(|e| {
+                e.title("User Protection Status").field(
+                    "Protected",
+                    format!(
+                        "**{}** - this user **{}** protected.",
+                        bool_to_yesno(status),
+                        bool_to_isisnt(status)
+                    ),
+                    false,
+                ).field("Update", "To change this user's protection status, use `n!protect @user true` or `n!protect @user false`", false)
+            })
+        })
+        .await?;
+
+    Ok(())
+}
+
+async fn update_protected_user_status(
+    ctx: &Context,
+    msg: &Message,
+    guild: &GuildId,
+    user: User,
+    new_status: bool,
+) -> Result<(), ProtectError> {
+    let data = ctx.data.read().await;
+    let db = data.get::<Database>().unwrap();
+
+    match new_status {
+        true => db.protect_user(*guild, user.id).await?,
+        false => db.unprotect_user(*guild, user.id).await?,
+    };
+
+    fn bool_to_arearent(b: bool) -> &'static str {
+        match b {
+            true => "are",
+            false => "are not",
+        }
+    }
+
+    msg.channel_id
+        .send_message(&ctx, |m| {
+            m.embed(|e| {
+                e.title("Updatetd User Protection Status").field(
+                    "Protected",
+                    format!(
+                        "Updated {}'s protection status - they **{}** protected.",
+                        user.mention(),
+                        bool_to_arearent(new_status)
+                    ),
+                    false,
+                )
+            })
+        })
+        .await?;
+
+    Ok(())
 }

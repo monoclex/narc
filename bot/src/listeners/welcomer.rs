@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serenity::{
     client::Context,
     model::{
-        guild::{Guild, GuildUnavailable},
+        guild::{Guild, UnavailableGuild},
         id::GuildId,
     },
 };
@@ -50,7 +50,7 @@ pub async fn guild_create(ctx: &Context, guild: &Guild) {
     }
 }
 
-pub async fn guild_delete(ctx: &Context, incomplete: &GuildUnavailable) {
+pub async fn guild_delete(ctx: &Context, incomplete: &UnavailableGuild) {
     let data = ctx.data.read().await;
     let db = data.get::<Database>().unwrap();
 

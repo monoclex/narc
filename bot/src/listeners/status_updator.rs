@@ -18,7 +18,7 @@ pub struct StatusUpdator<'ctx>(&'ctx Context);
 
 impl StatusUpdator<'_> {
     pub async fn update_presence(&self) {
-        let guilds = self.0.cache.guilds().await.len();
+        let guilds = self.0.cache.guilds().len();
         self.update_presence_with_guilds(guilds).await;
     }
 

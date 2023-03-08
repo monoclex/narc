@@ -17,6 +17,8 @@ use database::Database;
 use serenity::client::Client;
 use serenity::framework::StandardFramework;
 use serenity::http::Http;
+use serenity::model::prelude::{ApplicationId, UserId};
+use serenity::prelude::GatewayIntents;
 use state::State;
 use tracing_subscriber::filter::LevelFilter;
 
@@ -33,13 +35,13 @@ async fn main() -> Result<()> {
 
     let database = Database::connect(database_url.as_str()).await?;
 
-    let http = Http::new_with_token(&token);
+    let http = Http::new(&token);
     let app_info = http.get_current_application_info().await?;
-    let bot_id = app_info.id;
+    let ApplicationId(bot_id) = app_info.id;
 
     let framework = StandardFramework::new()
         .configure(|c| {
-            c.on_mention(Some(bot_id))
+            c.on_mention(Some(UserId(bot_id)))
                 .dynamic_prefix(|c, m| Box::pin(commands::dynamic_prefix(c, m)))
                 .prefix("")
                 .ignore_webhooks(true)
@@ -53,7 +55,8 @@ async fn main() -> Result<()> {
         .group(&ASSISTANCE_GROUP)
         .group(&ADMINISTRATION_GROUP);
 
-    let mut client = Client::builder(token)
+    let intents = GatewayIntents::all();
+    let mut client = Client::builder(token, intents)
         .event_handler(listeners::Listener)
         .framework(framework)
         .await?;

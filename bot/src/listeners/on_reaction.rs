@@ -38,7 +38,7 @@ pub async fn reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(), Reac
     };
 
     // don't listen to reactions from the bot
-    if user_id == ctx.cache.current_user_id().await {
+    if user_id == ctx.cache.current_user_id() {
         return Ok(());
     }
 
@@ -78,7 +78,7 @@ pub async fn reaction_removed(ctx: &Context, reaction: &Reaction) -> Result<(), 
     };
 
     // don't listen to reactions from the bot
-    if user_id == ctx.cache.current_user_id().await {
+    if user_id == ctx.cache.current_user_id() {
         return Ok(());
     }
 

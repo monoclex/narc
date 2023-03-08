@@ -14,7 +14,7 @@ pub struct Listener;
 impl EventHandler for Listener {
     async fn ready(&self, ctx: Context, data_about_bot: Ready) {
         status_updator::ready(&ctx, &data_about_bot).await;
-        welcomer::ready(&ctx, data_about_bot.guilds.iter().map(|s| s.id())).await;
+        welcomer::ready(&ctx, data_about_bot.guilds.iter().map(|s| s.id)).await;
     }
 
     async fn guild_create(&self, ctx: Context, guild: Guild, is_new: bool) {
@@ -24,7 +24,7 @@ impl EventHandler for Listener {
         }
     }
 
-    async fn guild_delete(&self, ctx: Context, incomplete: GuildUnavailable, _full: Option<Guild>) {
+    async fn guild_delete(&self, ctx: Context, incomplete: UnavailableGuild, _full: Option<Guild>) {
         status_updator::guild_delete(&ctx).await;
         welcomer::guild_delete(&ctx, &incomplete).await;
     }
@@ -56,6 +56,7 @@ impl EventHandler for Listener {
     }
 
     async fn message(&self, ctx: Context, message: Message) {
+        println!("msg is {message:?}");
         if let Err(error) = on_msg::message(&ctx, &message).await {
             handle_err(
                 &ctx,

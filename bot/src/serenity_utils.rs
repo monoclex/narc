@@ -314,7 +314,7 @@ pub mod prompt {
                 .await_reactions(&ctx)
                 .message_id(msg.id)
                 .timeout(Duration::from_secs_f32(timeout))
-                .await;
+                .build();
 
             while let Some(action) = collector.next().await {
                 if let ReactionAction::Added(reaction) = action.as_ref() {

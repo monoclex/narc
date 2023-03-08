@@ -47,14 +47,14 @@ pub async fn after(ctx: &Context, msg: &Message, cmd: &str, err: CommandResult) 
             cmd
         ),
         &Default::default(),
-    )
-    .await;
+        &[],
+    );
 
     handle_err(&ctx, msg.channel_id, Some(msg.id), &error, error_msg).await;
 }
 
 #[hook]
-pub async fn dispatch_error(ctx: &Context, msg: &Message, err: DispatchError) {
+pub async fn dispatch_error(ctx: &Context, msg: &Message, err: DispatchError, command_name: &str) {
     let message: String = match err {
         DispatchError::OnlyForOwners => "This command is only available for owners!".into(),
         DispatchError::LackingPermissions(p) => {

@@ -206,7 +206,7 @@ async fn configure_report_emote(
             .await_reactions(&ctx)
             .message_id(prompt.id)
             .timeout(Duration::from_secs(30))
-            .await;
+            .build();
 
         while let Some(emote) = collector.next().await {
             if let ReactionAction::Added(reaction) = emote.as_ref() {
@@ -297,7 +297,7 @@ pub enum ProtectError {
 #[required_permissions(ADMINISTRATOR)]
 #[description("Set (or show) a user's protected status.")]
 pub async fn protect(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let guild = msg.guild(&ctx).await.ok_or(ProtectError::NoUserSpecified)?;
+    let guild = msg.guild(&ctx).ok_or(ProtectError::NoUserSpecified)?;
 
     let user = match args.single_quoted::<String>() {
         Ok(name) => {
@@ -334,7 +334,7 @@ pub async fn protect(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
 #[required_permissions(ADMINISTRATOR)]
 #[description("Show a user's protected status.")]
 pub async fn protected(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let guild = msg.guild(&ctx).await.ok_or(ProtectError::NoGuild)?;
+    let guild = msg.guild(&ctx).ok_or(ProtectError::NoGuild)?;
 
     let user = match args.single_quoted::<String>() {
         Ok(name) => {

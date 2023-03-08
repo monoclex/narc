@@ -1,7 +1,6 @@
 #!/bin/sh
 
-if [ $# -ne 4 ]
-then
+if [ $# -ne 4 ]; then
         echo "Invalid arguments supplied!"
         echo ""
         echo "Usage:"

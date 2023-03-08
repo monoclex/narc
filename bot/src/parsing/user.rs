@@ -88,7 +88,7 @@ pub async fn user(
 
     // TODO: maybe use more of the `guild.members_x` methods?
 
-    let sanitized_username = content_safe(&ctx, argument, &ContentSafeOptions::default()).await;
+    let sanitized_username = content_safe(&ctx, argument, &ContentSafeOptions::default(), &[]);
     Err(FailedUserParse::NoUser(sanitized_username))
 }
 
@@ -108,7 +108,7 @@ impl ParsedUser {
     pub async fn user(self, ctx: &Context) -> Option<User> {
         match self {
             ParsedUser::Member(member) => Some(member.user),
-            ParsedUser::Id(id) => ctx.cache.user(id).await,
+            ParsedUser::Id(id) => ctx.cache.user(id),
         }
     }
 

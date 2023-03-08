@@ -29,7 +29,7 @@ pub async fn report(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     // TODO: check if the user includes a link in their message, and if so, use
     //       the guild the link comes from as the `guild_id` and `reported_message`
 
-    let guild = msg.guild(&ctx).await.ok_or(ReportCommandError::NoGuild)?;
+    let guild = msg.guild(&ctx).ok_or(ReportCommandError::NoGuild)?;
 
     let name = args.single_quoted::<String>()?;
     let user = parsing::user(&name, &ctx, &guild).await?;
